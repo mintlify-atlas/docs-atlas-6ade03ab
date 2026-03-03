@@ -1,0 +1,130 @@
+{
+  "projectType": "saas",
+  "projectName": "OpsChat",
+  "projectDescription": "Real-time chat platform with AI-powered summarization, translation, and voice notes built for horizontal scaling on Kubernetes.",
+  "theme": "aspen",
+  "primaryColor": "#3b82f6",
+  "lightColor": "#60a5fa",
+  "darkColor": "#2563eb",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "features"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/docker-compose",
+              "deployment/kubernetes",
+              "deployment/configuration"
+            ]
+          },
+          {
+            "group": "User Guide",
+            "pages": [
+              "user-guide/channels-workspaces",
+              "user-guide/direct-messages",
+              "user-guide/file-uploads",
+              "user-guide/ai-features"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/tech-stack",
+              "architecture/scaling"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "REST API",
+            "pages": [
+              "api/channels",
+              "api/friends",
+              "api/users",
+              "api/uploads",
+              "api/ai-services"
+            ]
+          },
+          {
+            "group": "Real-time",
+            "pages": [
+              "api/socket-events"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "development/setup",
+              "development/database-schema",
+              "development/testing"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/contributing"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time messaging with Socket.io and Redis adapter",
+    "AI-powered translation using Groq API",
+    "AI conversation summarization",
+    "Smart reply suggestions",
+    "File uploads (images, voice notes) via MinIO/S3",
+    "Channels and workspaces for team collaboration",
+    "Direct messaging between users",
+    "Friend request system",
+    "Horizontal scaling with Kubernetes",
+    "PostgreSQL database with Prisma ORM"
+  ],
+  "publicApiSurface": [
+    "POST /api/register - User registration",
+    "POST /api/login - User authentication",
+    "GET /api/channels - List channels",
+    "POST /api/channels - Create channel",
+    "GET /api/channels/:id - Get channel details",
+    "POST /api/channels/join - Join channel by invite code",
+    "GET /api/friends - List friends",
+    "POST /api/friends/request - Send friend request",
+    "POST /api/friends/accept - Accept friend request",
+    "GET /api/users/:id - Get user profile",
+    "PUT /api/users/:id - Update user profile",
+    "POST /api/upload - Upload file",
+    "POST /api/ai/summarize - Summarize conversation",
+    "POST /api/ai/translate - Translate message",
+    "POST /api/ai/suggest-replies - Get smart reply suggestions",
+    "Socket: join_channel - Join a channel or DM room",
+    "Socket: send_message - Send a message",
+    "Socket: receive_message - Receive a message",
+    "Socket: load_history - Load message history"
+  ]
+}
