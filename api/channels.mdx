@@ -1,0 +1,443 @@
+---
+title: 'Channel Endpoints'
+description: 'Manage channels and channel membership in workspaces'
+icon: 'hashtag'
+---
+
+## Overview
+
+Channels are discussion spaces within workspaces. Users can create channels, join them via invite codes, and manage their membership. All channel endpoints require authentication.
+
+## Authentication
+
+All endpoints require the `x-user-id` header:
+
+```bash
+X-User-Id: <user_id>
+```
+
+---
+
+## Create Channel
+
+<Card title="POST /api/channels/create" icon="plus">
+  Create a new channel within a workspace. The creator automatically becomes the first member with CREATOR role.
+</Card>
+
+### Request
+
+<ParamField body="name" type="string" required>
+  Channel name. Will be automatically formatted to lowercase with hyphens replacing spaces.
+</ParamField>
+
+<ParamField body="workspaceId" type="number" required>
+  The ID of the workspace where the channel will be created.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="number">
+  Unique channel identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Formatted channel name (lowercase, hyphenated)
+</ResponseField>
+
+<ResponseField name="workspaceId" type="number">
+  ID of the parent workspace
+</ResponseField>
+
+<ResponseField name="creatorId" type="number">
+  User ID of the channel creator
+</ResponseField>
+
+<ResponseField name="inviteCode" type="string">
+  Unique invite code for joining the channel
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message with instructions
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.opschat.com/api/channels/create \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 123" \
+  -d '{
+    "name": "Engineering Team",
+    "workspaceId": 5
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/create', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-User-Id': '123'
+  },
+  body: JSON.stringify({
+    name: 'Engineering Team',
+    workspaceId: 5
+  })
+});
+
+const channel = await response.json();
+console.log(channel.inviteCode); // Share with team members
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.opschat.com/api/channels/create',
+    headers={'X-User-Id': '123'},
+    json={
+        'name': 'Engineering Team',
+        'workspaceId': 5
+    }
+)
+
+channel = response.json()
+print(f"Invite code: {channel['inviteCode']}")
+```
+</CodeGroup>
+
+### Error Responses
+
+<Expandable title="400 - Channel Already Exists">
+  ```json
+  {
+    "error": "Channel name already exists in this workspace"
+  }
+  ```
+</Expandable>
+
+<Expandable title="404 - Workspace Not Found">
+  ```json
+  {
+    "error": "Workspace not found"
+  }
+  ```
+</Expandable>
+
+---
+
+## Join Channel
+
+<Card title="POST /api/channels/join" icon="right-to-bracket">
+  Join an existing channel using an invite code. Users are added with MEMBER role.
+</Card>
+
+### Request
+
+<ParamField body="inviteCode" type="string" required>
+  The unique invite code provided by the channel creator.
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="channel" type="object">
+  Channel information
+  <Expandable title="properties">
+    <ResponseField name="id" type="number">
+      Channel ID
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Channel name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.opschat.com/api/channels/join \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 456" \
+  -d '{
+    "inviteCode": "abc123xyz"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/join', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-User-Id': '456'
+  },
+  body: JSON.stringify({
+    inviteCode: 'abc123xyz'
+  })
+});
+
+const result = await response.json();
+console.log(result.message); // "Successfully joined channel!"
+```
+</CodeGroup>
+
+### Error Responses
+
+<Expandable title="404 - Invalid Invite Code">
+  ```json
+  {
+    "error": "Invalid invite code"
+  }
+  ```
+</Expandable>
+
+<Expandable title="200 - Already a Member">
+  ```json
+  {
+    "message": "You are already a member of this channel",
+    "channel": { "id": 10, "name": "engineering-team" }
+  }
+  ```
+</Expandable>
+
+---
+
+## Get Channels
+
+<Card title="GET /api/channels/:workspaceId" icon="list">
+  Retrieve all channels in a workspace where the authenticated user is a member.
+</Card>
+
+### Path Parameters
+
+<ParamField path="workspaceId" type="number" required>
+  The workspace ID to fetch channels from.
+</ParamField>
+
+### Response
+
+Returns an array of channel objects:
+
+<ResponseField name="id" type="number">
+  Channel ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Channel name
+</ResponseField>
+
+<ResponseField name="inviteCode" type="string | undefined">
+  Invite code (only visible to channel creator)
+</ResponseField>
+
+<ResponseField name="memberCount" type="number">
+  Total number of channel members
+</ResponseField>
+
+<ResponseField name="isCreator" type="boolean">
+  Whether the authenticated user is the channel creator
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl https://api.opschat.com/api/channels/5 \
+  -H "X-User-Id: 123"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/5', {
+  headers: { 'X-User-Id': '123' }
+});
+
+const channels = await response.json();
+channels.forEach(channel => {
+  console.log(`${channel.name} (${channel.memberCount} members)`);
+  if (channel.isCreator) {
+    console.log(`  Invite code: ${channel.inviteCode}`);
+  }
+});
+```
+</CodeGroup>
+
+---
+
+## Get Invite Code
+
+<Card title="GET /api/channels/:channelId/invite-code" icon="key">
+  Retrieve the invite code for a channel (creator only).
+</Card>
+
+### Path Parameters
+
+<ParamField path="channelId" type="number" required>
+  The channel ID
+</ParamField>
+
+### Response
+
+<ResponseField name="inviteCode" type="string">
+  The channel's unique invite code
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl https://api.opschat.com/api/channels/10/invite-code \
+  -H "X-User-Id: 123"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/10/invite-code', {
+  headers: { 'X-User-Id': '123' }
+});
+
+const { inviteCode } = await response.json();
+console.log(`Share this code: ${inviteCode}`);
+```
+</CodeGroup>
+
+### Error Responses
+
+<Expandable title="403 - Not a Creator">
+  ```json
+  {
+    "error": "Only the channel creator can view the invite code"
+  }
+  ```
+</Expandable>
+
+<Expandable title="404 - Channel Not Found">
+  ```json
+  {
+    "error": "Channel not found"
+  }
+  ```
+</Expandable>
+
+---
+
+## Update Channel
+
+<Card title="PUT /api/channels/:channelId" icon="pen">
+  Update channel name (creator only).
+</Card>
+
+### Path Parameters
+
+<ParamField path="channelId" type="number" required>
+  The channel ID to update
+</ParamField>
+
+### Request
+
+<ParamField body="name" type="string" required>
+  New channel name. Will be formatted to lowercase with hyphens.
+</ParamField>
+
+### Response
+
+Returns the updated channel object with all fields.
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.opschat.com/api/channels/10 \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 123" \
+  -d '{"name": "Senior Engineering Team"}'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/10', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-User-Id': '123'
+  },
+  body: JSON.stringify({ name: 'Senior Engineering Team' })
+});
+
+const updated = await response.json();
+console.log(updated.name); // "senior-engineering-team"
+```
+</CodeGroup>
+
+### Error Responses
+
+<Expandable title="403 - Forbidden">
+  ```json
+  {
+    "error": "Only the channel creator can edit this channel"
+  }
+  ```
+</Expandable>
+
+<Expandable title="400 - Duplicate Name">
+  ```json
+  {
+    "error": "Channel name already exists in this workspace"
+  }
+  ```
+</Expandable>
+
+---
+
+## Delete Channel
+
+<Card title="DELETE /api/channels/:channelId" icon="trash">
+  Permanently delete a channel (creator only). All messages and members are cascade deleted.
+</Card>
+
+### Path Parameters
+
+<ParamField path="channelId" type="number" required>
+  The channel ID to delete
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string">
+  Success confirmation message
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.opschat.com/api/channels/10 \
+  -H "X-User-Id: 123"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.opschat.com/api/channels/10', {
+  method: 'DELETE',
+  headers: { 'X-User-Id': '123' }
+});
+
+const result = await response.json();
+console.log(result.message); // "Channel deleted successfully"
+```
+</CodeGroup>
+
+### Error Responses
+
+<Expandable title="403 - Forbidden">
+  ```json
+  {
+    "error": "Only the channel creator can delete this channel"
+  }
+  ```
+</Expandable>
+
+<Warning>
+  Deleting a channel is permanent and cannot be undone. All messages and member associations will be lost.
+</Warning>

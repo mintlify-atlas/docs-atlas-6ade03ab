@@ -1,0 +1,677 @@
+---
+title: Kubernetes Deployment
+description: Deploy OpsChat to Kubernetes with horizontal scaling and high availability
+icon: dharmachakra
+---
+
+## Overview
+
+The Kubernetes deployment provides a production-ready setup with:
+
+- **Horizontal scaling**: Run multiple backend replicas for load balancing
+- **High availability**: Automatic pod restarts and health checks
+- **Service discovery**: Internal DNS for service communication
+- **Ingress routing**: Unified external access with NGINX
+- **Resource management**: CPU and memory limits/requests
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Required Tools">
+    <CodeGroup>
+    ```bash macOS
+    brew install kubectl kind
+    ```
+    
+    ```bash Linux
+    # kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    
+    # KIND
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+    chmod +x ./kind
+    sudo mv ./kind /usr/local/bin/kind
+    ```
+    
+    ```bash Windows
+    choco install kubernetes-cli kind
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Clone Repository">
+    ```bash
+    git clone https://github.com/yourusername/opschat.git
+    cd opschat
+    ```
+  </Step>
+
+  <Step title="Configure Groq API Key">
+    Create a `.env` file with your Groq API key:
+    ```bash
+    echo "GROQ_API_KEY=your_groq_api_key_here" > .env
+    ```
+    
+    <Note>
+      The deploy script will automatically create a Kubernetes secret from this file
+    </Note>
+  </Step>
+</Steps>
+
+## Automated Deployment
+
+The easiest way to deploy OpsChat to Kubernetes is using the provided deployment script.
+
+### Quick Start
+
+```bash
+# Make the script executable
+chmod +x deploy.sh
+
+# Run the deployment
+./deploy.sh
+```
+
+### What the Script Does
+
+<Steps>
+  <Step title="Create KIND Cluster">
+    Creates a local Kubernetes cluster named `opschat-local` with:
+    - 1 control plane node
+    - 2 worker nodes (for backend/frontend distribution)
+    - Port mappings for HTTP (80) and HTTPS (443)
+  </Step>
+
+  <Step title="Install NGINX Ingress">
+    Deploys the NGINX Ingress Controller to handle external traffic routing.
+  </Step>
+
+  <Step title="Install Metrics Server">
+    Sets up the Metrics Server for resource monitoring:
+    ```bash
+    # View pod resource usage
+    kubectl top pods
+    
+    # View node resource usage
+    kubectl top nodes
+    ```
+  </Step>
+
+  <Step title="Create Secrets">
+    Creates a Kubernetes secret for the Groq API key from your `.env` file.
+  </Step>
+
+  <Step title="Build Docker Images">
+    Builds both backend and frontend images:
+    - `opschat-backend:v1`
+    - `opschat-frontend:v1`
+  </Step>
+
+  <Step title="Load Images to KIND">
+    Transfers the Docker images into the KIND cluster so they can be used by pods.
+  </Step>
+
+  <Step title="Deploy Services">
+    Applies all Kubernetes manifests for:
+    - PostgreSQL (database)
+    - Redis (cache & pub/sub)
+    - MinIO (object storage)
+    - Backend API (2 replicas)
+    - Frontend UI
+  </Step>
+
+  <Step title="Configure Ingress">
+    Sets up ingress routes for:
+    - Frontend: http://localhost/
+    - Backend API: http://localhost/api
+    - WebSocket: http://localhost/socket.io
+    - MinIO: http://minio.localhost
+  </Step>
+</Steps>
+
+### Deployment Output
+
+```bash
+OpsChat Kubernetes Deployment
+=================================
+Creating KIND cluster 'opschat-local'...
+Cluster created!
+Installing NGINX Ingress Controller...
+Ingress controller ready!
+Installing Metrics Server...
+Metrics server installed!
+Creating secrets...
+Secrets created from .env file!
+Building Docker Images...
+Images built!
+Loading images into KIND cluster...
+Images loaded!
+Applying core Kubernetes manifests...
+Applying ingress resources...
+Ingress resources created!
+Restarting deployments...
+Waiting for deployments to be ready...
+
+=============================================
+Deployment Complete!
+=============================================
+
+App:        http://localhost
+MinIO:      http://minio.localhost
+
+   Useful commands:
+   kubectl get pods          - View running pods
+   kubectl logs -l app=backend -f  - Stream backend logs
+   kind delete cluster --name opschat-local  - Delete cluster
+```
+
+## Manual Deployment
+
+For more control or production environments, deploy manually:
+
+<Steps>
+  <Step title="Create Kubernetes Cluster">
+    <CodeGroup>
+    ```bash KIND (Local)
+    kind create cluster --config kind-config.yaml --name opschat-local
+    kubectl config use-context kind-opschat-local
+    ```
+    
+    ```bash GKE (Google Cloud)
+    gcloud container clusters create opschat \
+      --num-nodes=3 \
+      --machine-type=e2-standard-2 \
+      --region=us-central1
+    ```
+    
+    ```bash EKS (AWS)
+    eksctl create cluster \
+      --name opschat \
+      --region us-east-1 \
+      --nodegroup-name standard-workers \
+      --node-type t3.medium \
+      --nodes 3
+    ```
+    
+    ```bash AKS (Azure)
+    az aks create \
+      --resource-group opschat-rg \
+      --name opschat \
+      --node-count 3 \
+      --node-vm-size Standard_D2_v2
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Install Ingress Controller">
+    ```bash
+    kubectl apply -f k8s/ingress-nginx.yaml
+    
+    # Wait for ingress controller to be ready
+    kubectl wait --namespace ingress-nginx \
+      --for=condition=available deployment/ingress-nginx-controller \
+      --timeout=300s
+    ```
+  </Step>
+
+  <Step title="Create Secrets">
+    ```bash
+    # From .env file
+    kubectl create secret generic opschat-secrets \
+      --from-env-file=.env
+    
+    # Or manually
+    kubectl create secret generic opschat-secrets \
+      --from-literal=GROQ_API_KEY=your_key_here
+    ```
+  </Step>
+
+  <Step title="Build and Push Images">
+    <CodeGroup>
+    ```bash Local KIND
+    # Build images
+    docker build -t opschat-backend:v1 ./opschat-backend
+    docker build -t opschat-frontend:v1 \
+      --build-arg VITE_API_URL=http://localhost \
+      ./opschat-frontend
+    
+    # Load into KIND
+    kind load docker-image opschat-backend:v1 --name opschat-local
+    kind load docker-image opschat-frontend:v1 --name opschat-local
+    ```
+    
+    ```bash Docker Registry
+    # Build and tag
+    docker build -t registry.example.com/opschat-backend:v1 ./opschat-backend
+    docker build -t registry.example.com/opschat-frontend:v1 ./opschat-frontend
+    
+    # Push to registry
+    docker push registry.example.com/opschat-backend:v1
+    docker push registry.example.com/opschat-frontend:v1
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Deploy Services">
+    ```bash
+    # Deploy infrastructure
+    kubectl apply -f k8s/postgres.yaml
+    kubectl apply -f k8s/redis.yaml
+    kubectl apply -f k8s/minio.yaml
+    
+    # Deploy application
+    kubectl apply -f k8s/backend.yaml
+    kubectl apply -f k8s/frontend.yaml
+    
+    # Deploy ingress
+    kubectl apply -f k8s/ingress-backend.yaml
+    kubectl apply -f k8s/ingress-frontend.yaml
+    kubectl apply -f k8s/ingress-minio.yaml
+    ```
+  </Step>
+
+  <Step title="Verify Deployment">
+    ```bash
+    # Check pod status
+    kubectl get pods
+    
+    # Wait for all pods to be ready
+    kubectl wait --for=condition=ready pod --all --timeout=300s
+    
+    # Check services
+    kubectl get svc
+    
+    # Check ingress
+    kubectl get ingress
+    ```
+  </Step>
+</Steps>
+
+## Architecture
+
+### KIND Cluster Configuration
+
+```yaml kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  # Control Plane
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+  # Worker Nodes
+  - role: worker
+  - role: worker
+```
+
+### Backend Deployment (2 Replicas)
+
+```yaml k8s/backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2  # Horizontal scaling
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.28
+          command: ['sh', '-c', "until nc -z opschat-db 5432; do echo waiting for db; sleep 2; done;"]
+      
+      containers:
+        - name: backend
+          image: opschat-backend:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:password@opschat-db:5432/opschat"
+            - name: REDIS_HOST
+              value: "opschat-redis"
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: opschat-secrets
+                  key: GROQ_API_KEY
+```
+
+Key features:
+- **2 replicas** for load balancing
+- **Init container** waits for PostgreSQL to be ready
+- **Secret reference** for secure API key management
+- **Service discovery** via internal DNS (opschat-db, opschat-redis)
+
+### Ingress Configuration
+
+The ingress setup routes traffic to different services:
+
+```yaml k8s/ingress-backend.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opschat-ingress-api
+  annotations:
+    # Session affinity for Socket.io
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    
+    # CORS configuration
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    
+    # File upload size
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: opschat-api
+                port:
+                  number: 80
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: opschat-api
+                port:
+                  number: 80
+```
+
+**Important annotations:**
+- **Session affinity**: Sticky sessions for WebSocket connections
+- **CORS**: Cross-origin resource sharing for browser access
+- **Timeouts**: Extended timeouts for long-lived WebSocket connections
+- **Body size**: Large file upload support
+
+## Scaling
+
+### Manual Scaling
+
+```bash
+# Scale backend to 5 replicas
+kubectl scale deployment backend --replicas=5
+
+# Verify scaling
+kubectl get pods -l app=backend
+```
+
+### Horizontal Pod Autoscaler
+
+Enable automatic scaling based on CPU usage:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+```
+
+```bash
+# Apply HPA
+kubectl apply -f backend-hpa.yaml
+
+# Check HPA status
+kubectl get hpa
+```
+
+## Monitoring
+
+### View Logs
+
+```bash
+# All backend pods
+kubectl logs -l app=backend -f
+
+# Specific pod
+kubectl logs backend-7d4f8c9b5d-abc12 -f
+
+# Previous container (if crashed)
+kubectl logs backend-7d4f8c9b5d-abc12 --previous
+```
+
+### Check Pod Status
+
+```bash
+# List all pods
+kubectl get pods
+
+# Detailed pod info
+kubectl describe pod backend-7d4f8c9b5d-abc12
+
+# Resource usage
+kubectl top pods
+kubectl top nodes
+```
+
+### Debug Pod Issues
+
+```bash
+# Execute commands in pod
+kubectl exec -it backend-7d4f8c9b5d-abc12 -- /bin/sh
+
+# Port forward for direct access
+kubectl port-forward svc/opschat-api 3000:80
+
+# Check service endpoints
+kubectl get endpoints
+```
+
+## Data Persistence
+
+### PostgreSQL
+
+```yaml k8s/postgres.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+For production, use:
+- Managed databases (RDS, Cloud SQL, Azure Database)
+- StatefulSets for self-hosted databases
+- Regular backup solutions
+
+### MinIO
+
+The default setup uses `emptyDir` (ephemeral storage). For production:
+
+```yaml
+volumes:
+  - name: minio-storage
+    persistentVolumeClaim:
+      claimName: minio-pvc
+```
+
+Or use managed object storage:
+- AWS S3
+- Google Cloud Storage
+- Azure Blob Storage
+
+## Updating the Application
+
+<Steps>
+  <Step title="Build New Image">
+    ```bash
+    docker build -t opschat-backend:v2 ./opschat-backend
+    kind load docker-image opschat-backend:v2 --name opschat-local
+    ```
+  </Step>
+
+  <Step title="Update Deployment">
+    ```bash
+    # Update image in manifest
+    kubectl set image deployment/backend backend=opschat-backend:v2
+    
+    # Or apply updated YAML
+    kubectl apply -f k8s/backend.yaml
+    ```
+  </Step>
+
+  <Step title="Monitor Rollout">
+    ```bash
+    # Check rollout status
+    kubectl rollout status deployment/backend
+    
+    # View rollout history
+    kubectl rollout history deployment/backend
+    ```
+  </Step>
+
+  <Step title="Rollback if Needed">
+    ```bash
+    # Rollback to previous version
+    kubectl rollout undo deployment/backend
+    
+    # Rollback to specific revision
+    kubectl rollout undo deployment/backend --to-revision=2
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Pods stuck in Pending state">
+    Check resource availability:
+    ```bash
+    kubectl describe pod <pod-name>
+    kubectl top nodes
+    ```
+    
+    Common causes:
+    - Insufficient CPU/memory on nodes
+    - PersistentVolumeClaim not bound
+    - Image pull errors
+  </Accordion>
+
+  <Accordion title="Image pull errors">
+    For KIND clusters, ensure images are loaded:
+    ```bash
+    kind load docker-image opschat-backend:v1 --name opschat-local
+    ```
+    
+    For production, verify:
+    - Image exists in registry
+    - Image pull secrets are configured
+    - imagePullPolicy is set correctly
+  </Accordion>
+
+  <Accordion title="Backend can't connect to database">
+    Verify PostgreSQL is running:
+    ```bash
+    kubectl get pods -l app=postgres
+    kubectl logs -l app=postgres
+    ```
+    
+    Check service DNS:
+    ```bash
+    kubectl exec -it <backend-pod> -- nslookup opschat-db
+    ```
+  </Accordion>
+
+  <Accordion title="Ingress not working">
+    Check ingress controller:
+    ```bash
+    kubectl get pods -n ingress-nginx
+    kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller
+    ```
+    
+    Verify ingress resources:
+    ```bash
+    kubectl get ingress
+    kubectl describe ingress opschat-ingress-api
+    ```
+  </Accordion>
+
+  <Accordion title="WebSocket connections failing">
+    Ensure session affinity is configured in ingress annotations:
+    ```yaml
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    ```
+    
+    Check backend logs for Socket.io errors:
+    ```bash
+    kubectl logs -l app=backend -f | grep socket
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Cleanup
+
+```bash
+# Delete all resources
+kubectl delete -f k8s/
+
+# Delete cluster (KIND)
+kind delete cluster --name opschat-local
+
+# Delete cluster (cloud providers)
+gcloud container clusters delete opschat --region=us-central1  # GKE
+eksctl delete cluster --name opschat  # EKS
+az aks delete --resource-group opschat-rg --name opschat  # AKS
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/deployment/configuration">
+    Complete environment variable reference
+  </Card>
+  <Card title="Scaling Guide" icon="arrows-maximize" href="/architecture/scaling">
+    Horizontal scaling and production architecture
+  </Card>
+</CardGroup>

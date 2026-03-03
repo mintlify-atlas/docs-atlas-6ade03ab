@@ -1,0 +1,438 @@
+---
+title: 'Technology Stack'
+description: 'Detailed overview of technologies used in OpsChat and rationale'
+icon: 'layer-group'
+---
+
+## Overview
+
+OpsChat leverages modern, production-ready technologies chosen for performance, developer experience, and operational simplicity. The stack prioritizes real-time capabilities, type safety, and scalability.
+
+## Frontend Technologies
+
+### React 19
+
+<Card title="Why React?" icon="react">
+  - **Ecosystem**: Largest component library ecosystem
+  - **Performance**: Concurrent rendering and automatic batching
+  - **Developer Experience**: Excellent tooling and debugging
+  - **Team Familiarity**: Most widely adopted UI framework
+  - **Real-time Support**: Natural integration with WebSocket libraries
+</Card>
+
+**Version**: React 19.2.0 (latest stable)
+
+**Key Features Used**:
+- Function components with Hooks
+- Context API for global state
+- Suspense for async rendering
+- Automatic batching for performance
+
+### TypeScript
+
+<Card title="Why TypeScript?" icon="code">
+  - **Type Safety**: Catch errors at compile time
+  - **IntelliSense**: Superior autocomplete and documentation
+  - **Refactoring**: Confident code changes across codebase
+  - **Maintainability**: Self-documenting code with interfaces
+  - **Team Productivity**: Reduced bugs and faster onboarding
+</Card>
+
+**Version**: TypeScript 5.9.3
+
+**Configuration**: Strict mode enabled for maximum type safety
+
+### Vite
+
+<Card title="Why Vite?" icon="bolt-lightning">
+  - **Speed**: Lightning-fast HMR (Hot Module Replacement)
+  - **Modern**: Native ES modules in development
+  - **Build Performance**: 10-100x faster than Webpack
+  - **Plugin Ecosystem**: Rich ecosystem including React Fast Refresh
+  - **Production Optimization**: Rollup-based production builds
+</Card>
+
+**Version**: Vite 7.2.4
+
+**Build Time**: Sub-second HMR, ~5s production builds
+
+### Tailwind CSS
+
+<Card title="Why Tailwind?" icon="palette">
+  - **Utility-First**: Rapid UI development without custom CSS
+  - **Consistency**: Design system baked into class names
+  - **Performance**: Automatic purging of unused styles
+  - **Responsive**: Mobile-first breakpoints
+  - **Customization**: Fully configurable design tokens
+</Card>
+
+**Version**: Tailwind 3.4.19
+
+**Bundle Size**: ~10KB in production (after purging)
+
+### Socket.io Client
+
+<Card title="Why Socket.io?" icon="signal-stream">
+  - **Real-time**: WebSocket with automatic fallbacks
+  - **Reconnection**: Automatic reconnection handling
+  - **Rooms**: Built-in pub/sub for channels
+  - **Binary Support**: Efficient file transfer
+  - **Cross-platform**: Works everywhere WebSocket does
+</Card>
+
+**Version**: Socket.io-client 4.8.3
+
+**Features**:
+- Automatic reconnection with exponential backoff
+- Event-based messaging
+- Room-based broadcasting
+- Transport upgrade from polling to WebSocket
+
+### Additional Frontend Libraries
+
+<AccordionGroup>
+  <Accordion title="React Router v7" icon="route">
+    **Purpose**: Client-side routing
+    
+    **Why?**
+    - Type-safe routing
+    - Nested routes
+    - Lazy loading
+    - Search params handling
+    
+    **Version**: 7.12.0
+  </Accordion>
+
+  <Accordion title="Framer Motion" icon="wand-magic-sparkles">
+    **Purpose**: Animation library
+    
+    **Why?**
+    - Declarative animations
+    - Spring physics
+    - Layout animations
+    - Gesture support
+    
+    **Version**: 12.27.5
+  </Accordion>
+
+  <Accordion title="Axios" icon="arrow-right-arrow-left">
+    **Purpose**: HTTP client
+    
+    **Why?**
+    - Interceptors for auth
+    - Request/response transformation
+    - Automatic JSON parsing
+    - Timeout handling
+    
+    **Version**: 1.13.4
+  </Accordion>
+
+  <Accordion title="Lucide React" icon="icons">
+    **Purpose**: Icon library
+    
+    **Why?**
+    - 1000+ consistent icons
+    - Tree-shakeable
+    - Customizable size/color
+    - Lightweight
+    
+    **Version**: 0.562.0
+  </Accordion>
+
+  <Accordion title="date-fns" icon="calendar">
+    **Purpose**: Date utilities
+    
+    **Why?**
+    - Modular (tree-shakeable)
+    - Immutable operations
+    - Timezone support
+    - Simple API
+    
+    **Version**: 4.1.0
+  </Accordion>
+</AccordionGroup>
+
+## Backend Technologies
+
+### Node.js
+
+<Card title="Why Node.js?" icon="node">
+  - **JavaScript Everywhere**: Same language as frontend
+  - **Event-Driven**: Perfect for real-time applications
+  - **Performance**: V8 engine with non-blocking I/O
+  - **Ecosystem**: npm has 2M+ packages
+  - **WebSocket Support**: Native and excellent library support
+</Card>
+
+**Runtime**: Node.js LTS (implied from dependencies)
+
+**Event Loop**: Single-threaded, non-blocking I/O for high concurrency
+
+### Express
+
+<Card title="Why Express?" icon="server">
+  - **Minimalist**: Unopinionated, flexible framework
+  - **Middleware**: Rich ecosystem of plugins
+  - **Stability**: Battle-tested in production
+  - **Performance**: Lightweight HTTP server
+  - **Community**: Largest Node.js framework
+</Card>
+
+**Version**: Express 5.2.1 (latest major version)
+
+**Middleware Stack**:
+- CORS for cross-origin requests
+- JSON body parser
+- Custom authentication middleware
+- Error handling middleware
+
+### Socket.io Server
+
+<Card title="Why Socket.io Server?" icon="tower-broadcast">
+  - **Scaling**: Redis adapter for multi-instance support
+  - **Reliability**: Automatic reconnection and heartbeats
+  - **Rooms**: Channel-based broadcasting
+  - **Namespaces**: Logical separation of connections
+  - **Binary**: Efficient file transfer support
+</Card>
+
+**Version**: Socket.io 4.8.3
+
+**Configuration** (`server.js:40`):
+- Redis adapter for horizontal scaling
+- CORS enabled for frontend origins
+- Session affinity via ingress annotations
+
+### Prisma ORM
+
+<Card title="Why Prisma?" icon="database">
+  - **Type Safety**: Auto-generated TypeScript types
+  - **Developer Experience**: Intuitive query API
+  - **Migrations**: Declarative schema migrations
+  - **Performance**: Connection pooling and query optimization
+  - **Introspection**: Generate schema from existing DB
+</Card>
+
+**Version**: Prisma 5.10.2
+
+**Features**:
+- Declarative schema definition
+- Type-safe database client
+- Automatic migrations
+- Seeding support
+- Multiple database targets (postgres binary for Docker)
+
+### Authentication Stack
+
+<AccordionGroup>
+  <Accordion title="JWT (JSON Web Tokens)" icon="shield-check">
+    **Purpose**: Stateless authentication
+    
+    **Why?**
+    - No server-side session storage
+    - Scales horizontally
+    - Contains user claims
+    - Standard format (RFC 7519)
+    
+    **Implementation**: Custom middleware validates tokens on protected routes
+  </Accordion>
+
+  <Accordion title="bcryptjs" icon="lock">
+    **Purpose**: Password hashing
+    
+    **Why?**
+    - Adaptive hashing (cost factor)
+    - Salt included in hash
+    - Resistant to rainbow tables
+    - Pure JavaScript (no native dependencies)
+    
+    **Version**: 3.0.3
+  </Accordion>
+</AccordionGroup>
+
+## Data Layer
+
+### PostgreSQL
+
+<Card title="Why PostgreSQL?" icon="elephant">
+  - **ACID Compliance**: Data integrity guarantees
+  - **Relational Model**: Complex queries with JOINs
+  - **JSON Support**: Hybrid relational/document features
+  - **Performance**: Excellent query optimization
+  - **Extensions**: Full-text search, PostGIS, etc.
+  - **Reliability**: Battle-tested in production
+</Card>
+
+**Features Used**:
+- Foreign key constraints
+- Unique indexes
+- Cascading deletes
+- Timestamp columns with defaults
+- Connection pooling via Prisma
+
+**Schema Management**: Prisma migrations track all schema changes
+
+### Redis
+
+<Card title="Why Redis?" icon="bolt">
+  - **Pub/Sub**: Native publish/subscribe for Socket.io
+  - **Performance**: In-memory operations (microsecond latency)
+  - **Simplicity**: Simple key-value API
+  - **Reliability**: Proven in production at scale
+  - **Data Structures**: Lists, sets, sorted sets, etc.
+</Card>
+
+**Version**: Redis client 5.10.0
+
+**Usage Pattern** (`redis.js:6`):
+- Dual client setup (pub + sub)
+- Used exclusively for Socket.io adapter
+- Potential future use: caching, rate limiting, sessions
+
+### MinIO
+
+<Card title="Why MinIO?" icon="bucket">
+  - **S3 Compatible**: Standard API, easy migration
+  - **Self-Hosted**: Full data control
+  - **Performance**: High-throughput object storage
+  - **Lightweight**: Easy to deploy and operate
+  - **Cost**: No per-request charges
+</Card>
+
+**AWS SDK Version**: @aws-sdk/client-s3 3.975.0
+
+**Features**:
+- Pre-signed URLs for secure downloads
+- Bucket lifecycle policies
+- Multi-part uploads
+- Public access control
+
+## External Services
+
+### Groq API
+
+<Card title="Why Groq?" icon="microchip">
+  - **Speed**: Fastest LLM inference (up to 750 tokens/sec)
+  - **Cost**: Competitive pricing
+  - **Models**: Latest open models (Llama, Mixtral)
+  - **API**: Simple REST API
+  - **Reliability**: Production-grade uptime
+</Card>
+
+**SDK Version**: groq-sdk 0.37.0
+
+**Use Cases**:
+- AI chat assistance in channels
+- Message summarization
+- Content generation
+
+## Infrastructure
+
+### Docker
+
+<Card title="Why Docker?" icon="docker">
+  - **Consistency**: Same environment dev to prod
+  - **Isolation**: Dependencies contained
+  - **Portability**: Run anywhere
+  - **CI/CD**: Easy integration with pipelines
+  - **Resource Efficiency**: Lightweight vs VMs
+</Card>
+
+**Images**:
+- Frontend: Nginx serving static React build
+- Backend: Node.js with Prisma binaries
+- PostgreSQL: Official postgres:15 image
+- Redis: Official redis:7-alpine image
+- MinIO: Official minio/minio image
+
+### Kubernetes
+
+<Card title="Why Kubernetes?" icon="dharmachakra">
+  - **Orchestration**: Automated deployment and scaling
+  - **Self-Healing**: Automatic container restarts
+  - **Load Balancing**: Built-in service discovery
+  - **Rolling Updates**: Zero-downtime deployments
+  - **Industry Standard**: Most popular container orchestrator
+</Card>
+
+**Resources**:
+- Deployments for stateless apps (frontend, backend)
+- StatefulSets for stateful services (database, redis)
+- Services for internal networking
+- Ingress for external access
+- ConfigMaps and Secrets for configuration
+
+**Configuration**: All manifests in `/k8s/` directory
+
+### NGINX Ingress Controller
+
+<Card title="Why NGINX Ingress?" icon="router">
+  - **Session Affinity**: Cookie-based routing for WebSockets
+  - **Load Balancing**: Distribute traffic across pods
+  - **SSL Termination**: HTTPS support
+  - **Path Routing**: Route based on URL paths
+  - **CORS Handling**: Built-in CORS support
+</Card>
+
+**Key Annotations** (`ingress-backend.yaml:6`):
+- Session affinity with cookie-based routing
+- CORS configuration
+- WebSocket timeout settings (3600s)
+- File upload size limits (50MB)
+
+## Development Tools
+
+<CardGroup cols={2}>
+  <Card title="ESLint" icon="code-compare">
+    Code linting and formatting for consistency
+  </Card>
+  
+  <Card title="Jest" icon="vial">
+    Backend testing framework with supertest
+  </Card>
+  
+  <Card title="Nodemon" icon="rotate">
+    Auto-restart on file changes during development
+  </Card>
+  
+  <Card title="PostCSS" icon="css3">
+    CSS processing with autoprefixer
+  </Card>
+</CardGroup>
+
+## Technology Decision Matrix
+
+<Note>
+Key factors in technology selection:
+1. **Performance**: Real-time requirements demand low latency
+2. **Scalability**: Must support horizontal scaling
+3. **Developer Experience**: Fast iteration and debugging
+4. **Community**: Active maintenance and ecosystem
+5. **Production Readiness**: Battle-tested at scale
+</Note>
+
+| Category | Technology | Alternative Considered | Why Chosen |
+|----------|-----------|----------------------|------------|
+| Frontend Framework | React | Vue, Svelte | Ecosystem and team familiarity |
+| Build Tool | Vite | Webpack, Parcel | Development speed |
+| Styling | Tailwind | CSS Modules, Styled Components | Rapid prototyping |
+| Backend Runtime | Node.js | Python, Go | JavaScript everywhere |
+| Web Framework | Express | Fastify, Koa | Stability and ecosystem |
+| Database | PostgreSQL | MongoDB, MySQL | Relational model + ACID |
+| ORM | Prisma | TypeORM, Sequelize | Type safety + DX |
+| WebSocket | Socket.io | ws, uWebSockets | Scaling features |
+| Cache/PubSub | Redis | RabbitMQ, NATS | Simplicity + Socket.io support |
+| Object Storage | MinIO | AWS S3 | Self-hosted + cost |
+| Orchestration | Kubernetes | Docker Swarm, Nomad | Industry standard |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+    Understand the system architecture and component interactions
+  </Card>
+  
+  <Card title="Scaling Guide" icon="arrows-maximize" href="/architecture/scaling">
+    Learn how to scale OpsChat horizontally in production
+  </Card>
+</CardGroup>

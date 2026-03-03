@@ -1,0 +1,381 @@
+---
+title: 'File Upload Endpoints'
+description: 'Generate presigned URLs for secure file uploads to S3 storage'
+icon: 'cloud-arrow-up'
+---
+
+## Overview
+
+The Upload API provides presigned URLs for secure, direct file uploads to S3-compatible storage. This approach allows clients to upload files directly to storage without proxying through the API server, reducing server load and improving upload performance.
+
+## How It Works
+
+The presigned URL flow follows these steps:
+
+1. Client requests a presigned URL from the API, providing filename and file type
+2. API generates a signed URL with temporary upload permissions (60-second expiry)
+3. Client uploads the file directly to S3 using the presigned URL
+4. Client uses the returned permanent file URL in subsequent API calls
+
+<Note>
+  Presigned URLs expire after 60 seconds. If the upload takes longer, request a new presigned URL.
+</Note>
+
+---
+
+## Get Presigned Upload URL
+
+<Card title="POST /api/upload/upload-url" icon="link">
+  Generate a presigned URL for uploading a file directly to S3 storage.
+</Card>
+
+### Request
+
+<ParamField body="filename" type="string" required>
+  The original filename. Spaces will be replaced with hyphens automatically.
+</ParamField>
+
+<ParamField body="fileType" type="string" required>
+  MIME type of the file (e.g., "image/png", "application/pdf", "video/mp4")
+</ParamField>
+
+### Response
+
+<ResponseField name="uploadUrl" type="string">
+  Presigned S3 URL for uploading the file. Valid for 60 seconds.
+</ResponseField>
+
+<ResponseField name="fileUrl" type="string">
+  Permanent public URL where the file will be accessible after upload.
+</ResponseField>
+
+### Code Example
+
+<CodeGroup>
+```bash cURL
+# Step 1: Get presigned URL
+curl -X POST https://api.opschat.com/api/upload/upload-url \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "project screenshot.png",
+    "fileType": "image/png"
+  }'
+
+# Response:
+# {
+#   "uploadUrl": "https://s3.amazonaws.com/...",
+#   "fileUrl": "https://storage.opschat.com/opschat/1234567890-project-screenshot.png"
+# }
+
+# Step 2: Upload file to presigned URL
+curl -X PUT "<uploadUrl>" \
+  -H "Content-Type: image/png" \
+  --upload-file project-screenshot.png
+
+# Step 3: Use fileUrl in your application
+```
+
+```javascript JavaScript
+// Step 1: Get presigned URL
+const getPresignedUrl = async (file) => {
+  const response = await fetch('https://api.opschat.com/api/upload/upload-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      fileType: file.type
+    })
+  });
+  
+  return await response.json();
+};
+
+// Step 2: Upload file directly to S3
+const uploadFile = async (file) => {
+  const { uploadUrl, fileUrl } = await getPresignedUrl(file);
+  
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file
+  });
+  
+  if (!uploadResponse.ok) {
+    throw new Error('Upload failed');
+  }
+  
+  return fileUrl; // Use this URL in your app
+};
+
+// Usage example
+const fileInput = document.querySelector('input[type="file"]');
+const file = fileInput.files[0];
+
+const publicUrl = await uploadFile(file);
+console.log('File available at:', publicUrl);
+```
+
+```python Python
+import requests
+
+# Step 1: Get presigned URL
+def get_presigned_url(filename, file_type):
+    response = requests.post(
+        'https://api.opschat.com/api/upload/upload-url',
+        json={
+            'filename': filename,
+            'fileType': file_type
+        }
+    )
+    return response.json()
+
+# Step 2: Upload file to S3
+def upload_file(file_path, file_type):
+    filename = file_path.split('/')[-1]
+    urls = get_presigned_url(filename, file_type)
+    
+    with open(file_path, 'rb') as f:
+        upload_response = requests.put(
+            urls['uploadUrl'],
+            headers={'Content-Type': file_type},
+            data=f
+        )
+    
+    if upload_response.status_code == 200:
+        return urls['fileUrl']
+    else:
+        raise Exception('Upload failed')
+
+# Usage
+file_url = upload_file('document.pdf', 'application/pdf')
+print(f'File uploaded to: {file_url}')
+```
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "uploadUrl": "https://s3.amazonaws.com/opschat/1709472345-project-screenshot.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...",
+  "fileUrl": "https://storage.opschat.com/opschat/1709472345-project-screenshot.png"
+}
+```
+
+### Error Responses
+
+<Expandable title="400 - Missing File Info">
+  ```json
+  {
+    "error": "Missing file info"
+  }
+  ```
+  
+  Returned when `filename` or `fileType` is not provided in the request.
+</Expandable>
+
+<Expandable title="500 - Failed to Generate URL">
+  ```json
+  {
+    "error": "Failed to generate upload URL"
+  }
+  ```
+  
+  Returned when S3 service is unavailable or credentials are invalid.
+</Expandable>
+
+---
+
+## Uploading to Presigned URL
+
+Once you have the presigned URL, upload your file using an HTTP PUT request:
+
+### Requirements
+
+<Steps>
+  <Step title="Use PUT Method">
+    The presigned URL requires an HTTP PUT request, not POST.
+  </Step>
+  
+  <Step title="Set Content-Type">
+    Include the same `Content-Type` header you specified when requesting the presigned URL.
+  </Step>
+  
+  <Step title="Send File as Body">
+    The file should be sent as the raw request body (not multipart/form-data).
+  </Step>
+  
+  <Step title="Upload Within 60 Seconds">
+    The presigned URL expires after 60 seconds. Complete the upload before expiry.
+  </Step>
+</Steps>
+
+### Upload Example
+
+<CodeGroup>
+```javascript Fetch API
+const uploadToS3 = async (presignedUrl, file) => {
+  const response = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type
+    },
+    body: file
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+  
+  return response;
+};
+```
+
+```javascript XMLHttpRequest
+const uploadToS3 = (presignedUrl, file) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', (e) => {
+      const percent = (e.loaded / e.total) * 100;
+      console.log(`Upload progress: ${percent.toFixed(1)}%`);
+    });
+    
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        resolve(xhr.response);
+      } else {
+        reject(new Error('Upload failed'));
+      }
+    });
+    
+    xhr.addEventListener('error', () => reject(new Error('Network error')));
+    
+    xhr.open('PUT', presignedUrl);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.send(file);
+  });
+};
+```
+</CodeGroup>
+
+---
+
+## Complete Upload Flow
+
+Here's a complete example showing how to upload a file and use it in a message:
+
+```javascript
+const uploadAndSendMessage = async (file, channelId) => {
+  try {
+    // 1. Get presigned URL
+    const { uploadUrl, fileUrl } = await fetch(
+      'https://api.opschat.com/api/upload/upload-url',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          fileType: file.type
+        })
+      }
+    ).then(r => r.json());
+    
+    // 2. Upload file to S3
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file
+    });
+    
+    // 3. Send message with file URL
+    const message = await fetch(
+      `https://api.opschat.com/api/channels/${channelId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': '123'
+        },
+        body: JSON.stringify({
+          content: 'Check out this file!',
+          attachments: [{
+            url: fileUrl,
+            name: file.name,
+            type: file.type,
+            size: file.size
+          }]
+        })
+      }
+    ).then(r => r.json());
+    
+    return message;
+    
+  } catch (error) {
+    console.error('Upload failed:', error);
+    throw error;
+  }
+};
+```
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Validate Files Client-Side" icon="shield-check">
+    Check file size and type before requesting a presigned URL to avoid unnecessary API calls.
+  </Card>
+  
+  <Card title="Show Upload Progress" icon="chart-line">
+    Use XMLHttpRequest or similar to track upload progress and provide user feedback.
+  </Card>
+  
+  <Card title="Handle Expiration" icon="clock">
+    If upload might take longer than 60 seconds (e.g., large files on slow connections), implement retry logic with a new presigned URL.
+  </Card>
+  
+  <Card title="Sanitize Filenames" icon="broom">
+    The API automatically replaces spaces with hyphens, but consider additional sanitization for special characters on the client side.
+  </Card>
+</CardGroup>
+
+---
+
+## Supported File Types
+
+The API supports all file types. Common MIME types include:
+
+<AccordionGroup>
+  <Accordion title="Images">
+    - `image/jpeg` - JPEG images
+    - `image/png` - PNG images
+    - `image/gif` - GIF animations
+    - `image/webp` - WebP images
+    - `image/svg+xml` - SVG graphics
+  </Accordion>
+  
+  <Accordion title="Documents">
+    - `application/pdf` - PDF documents
+    - `application/msword` - Microsoft Word (.doc)
+    - `application/vnd.openxmlformats-officedocument.wordprocessingml.document` - Word (.docx)
+    - `text/plain` - Plain text files
+    - `text/markdown` - Markdown files
+  </Accordion>
+  
+  <Accordion title="Media">
+    - `video/mp4` - MP4 videos
+    - `video/webm` - WebM videos
+    - `audio/mpeg` - MP3 audio
+    - `audio/wav` - WAV audio
+  </Accordion>
+  
+  <Accordion title="Archives">
+    - `application/zip` - ZIP archives
+    - `application/x-tar` - TAR archives
+    - `application/gzip` - GZIP compressed files
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  While the API doesn't enforce file type restrictions, consider implementing client-side validation based on your application's requirements and security policies.
+</Warning>

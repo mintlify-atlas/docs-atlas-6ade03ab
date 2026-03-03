@@ -1,0 +1,926 @@
+---
+title: 'Socket.io Events'
+description: 'Real-time communication events for OpsChat using Socket.io'
+icon: 'bolt'
+---
+
+## Overview
+
+OpsChat uses Socket.io for real-time bidirectional communication between clients and the server. This enables instant messaging, live updates, and real-time synchronization across channels and direct messages.
+
+## Connection Setup
+
+### Client Connection
+
+The Socket.io client connects to the backend server with automatic reconnection disabled by default:
+
+<CodeGroup>
+
+```typescript Frontend (React)
+import { io } from "socket.io-client";
+
+const URL = import.meta.env.VITE_API_URL || "";
+
+export const socket = io(URL, {
+    autoConnect: false
+});
+
+// Connect manually when needed
+socket.connect();
+```
+
+```javascript Node.js Client
+const { io } = require('socket.io-client');
+
+const socket = io('http://localhost:3001', {
+    autoConnect: true
+});
+
+socket.on('connect', () => {
+    console.log(`Connected with ID: ${socket.id}`);
+});
+```
+
+</CodeGroup>
+
+### Server Setup
+
+The server initializes Socket.io handlers to manage connections and events:
+
+```javascript Backend Handler
+const setupSocketHandlers = (io) => {
+    io.on('connection', (socket) => {
+        console.log(`User connected: ${socket.id}`);
+        
+        // Socket event handlers registered here
+    });
+};
+```
+
+---
+
+## Events Reference
+
+### connection
+
+<ResponseField name="Event Type" type="server">
+  Emitted when a client successfully connects to the server
+</ResponseField>
+
+**Direction:** Server → Client (automatic)
+
+**Trigger:** Occurs automatically when socket.connect() is called
+
+**Server Handler:**
+
+```javascript
+io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.id}`);
+    // socket.id is automatically assigned by Socket.io
+});
+```
+
+---
+
+### join_channel
+
+<ResponseField name="Event Type" type="client-to-server">
+  Join a channel room or DM room to receive messages
+</ResponseField>
+
+**Direction:** Client → Server
+
+**Description:** Clients emit this event to join a specific channel or direct message conversation. The server automatically loads and sends message history after joining.
+
+#### For Channels
+
+<ParamField path="channelId" type="number" required>
+  The ID of the channel to join
+</ParamField>
+
+<ParamField path="userId" type="number" required>
+  The ID of the user joining the channel
+</ParamField>
+
+**Example:**
+
+```javascript Client Code
+socket.emit("join_channel", {
+    channelId: 5,
+    userId: 123
+});
+```
+
+#### For Direct Messages
+
+<ParamField path="dmUserId" type="number" required>
+  The ID of the other user in the DM conversation
+</ParamField>
+
+<ParamField path="userId" type="number" required>
+  The ID of the current user
+</ParamField>
+
+**Example:**
+
+```javascript Client Code
+socket.emit("join_channel", {
+    dmUserId: 456,
+    userId: 123
+});
+```
+
+#### Server Behavior
+
+```javascript Backend Logic
+socket.on('join_channel', async ({ room, channelId, dmUserId, userId }) => {
+    // Store userId on socket for later use
+    if (userId) {
+        socket.userId = parseInt(userId);
+        socket.join(`user_${userId}`); // Join personal room for notifications
+    }
+
+    // Leave all previous rooms
+    const rooms = [...socket.rooms];
+    rooms.forEach(r => {
+        if (r !== socket.id) {
+            socket.leave(r);
+        }
+    });
+
+    // Handle DM room join
+    if (dmUserId && userId) {
+        const minId = Math.min(currentUserId, otherUserId);
+        const maxId = Math.max(currentUserId, otherUserId);
+        const dmRoom = `dm_${minId}_${maxId}`;
+        socket.join(dmRoom);
+        
+        // Load and emit DM history
+        // ... (see load_history event)
+    }
+
+    // Handle channel room join
+    if (channelId) {
+        const roomName = `channel_${channelId}`;
+        socket.join(roomName);
+        
+        // Load and emit channel history
+        // ... (see load_history event)
+    }
+});
+```
+
+<Note>
+  **Room Naming Convention:**
+  - Channels: `channel_{channelId}`
+  - DMs: `dm_{minUserId}_{maxUserId}` (sorted numerically)
+  - User notifications: `user_{userId}`
+</Note>
+
+---
+
+### send_message
+
+<ResponseField name="Event Type" type="client-to-server">
+  Send a message to a channel or direct message
+</ResponseField>
+
+**Direction:** Client → Server
+
+**Description:** Clients emit this event to send messages. The server persists the message to the database and broadcasts it to all users in the room.
+
+#### For Channel Messages
+
+<ParamField path="message" type="string" required>
+  The message content (text, URL, or file path)
+</ParamField>
+
+<ParamField path="author" type="string" required>
+  The username of the sender
+</ParamField>
+
+<ParamField path="channelId" type="number" required>
+  The ID of the channel
+</ParamField>
+
+<ParamField path="userId" type="number">
+  The user ID of the sender
+</ParamField>
+
+<ParamField path="type" type="string" default="text">
+  Message type: `text`, `image`, `file`, or `audio`
+</ParamField>
+
+<ParamField path="expiresIn" type="number">
+  Message expiration time in seconds (null for no expiration)
+</ParamField>
+
+**Example:**
+
+```javascript Client Code
+const payload = {
+    message: "Hello team!",
+    author: "john_doe",
+    userId: 123,
+    channelId: 5,
+    type: "text",
+    expiresIn: null
+};
+
+socket.emit("send_message", payload);
+```
+
+#### For Direct Messages
+
+<ParamField path="message" type="string" required>
+  The message content
+</ParamField>
+
+<ParamField path="author" type="string" required>
+  The username of the sender
+</ParamField>
+
+<ParamField path="receiverId" type="number" required>
+  The ID of the message recipient
+</ParamField>
+
+<ParamField path="userId" type="number" required>
+  The user ID of the sender
+</ParamField>
+
+<ParamField path="type" type="string" default="text">
+  Message type: `text`, `image`, `file`, or `audio`
+</ParamField>
+
+**Example:**
+
+```javascript Client Code
+const payload = {
+    message: "Hey, how are you?",
+    author: "john_doe",
+    userId: 123,
+    receiverId: 456,
+    type: "text"
+};
+
+socket.emit("send_message", payload);
+```
+
+#### Server Behavior
+
+```javascript Backend Logic
+socket.on('send_message', async (data) => {
+    const { message, author, channelId, receiverId, type, expiresIn, userId } = data;
+
+    // Handle DM messages
+    if (receiverId && !channelId) {
+        const minId = Math.min(userId, receiverId);
+        const maxId = Math.max(userId, receiverId);
+        const dmRoom = `dm_${minId}_${maxId}`;
+
+        // Save DM to database
+        const savedDM = await prisma.directMessage.create({
+            data: {
+                content: message,
+                type: type || 'text',
+                senderId: parseInt(userId),
+                receiverId: parseInt(receiverId)
+            },
+            include: {
+                sender: { select: { username: true, avatar: true, avatarColor: true } }
+            }
+        });
+
+        // Broadcast to both users
+        io.to(dmRoom).emit('receive_message', {
+            id: savedDM.id.toString(),
+            message: message,
+            author: savedDM.sender?.username || author,
+            avatar: savedDM.sender?.avatar || null,
+            avatarColor: savedDM.sender?.avatarColor || null,
+            userId: userId,
+            type: type || 'text',
+            receiverId: receiverId,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    }
+
+    // Handle channel messages
+    if (channelId) {
+        // Calculate expiration
+        let expiresAt = null;
+        if (expiresIn) {
+            expiresAt = new Date(Date.now() + expiresIn * 1000);
+        }
+
+        // Save to database
+        const savedMessage = await prisma.message.create({
+            data: {
+                content: message,
+                author: author,
+                type: type || 'text',
+                channelId: parseInt(channelId),
+                userId: userId ? parseInt(userId) : null,
+                expiresAt: expiresAt
+            }
+        });
+
+        // Broadcast to channel
+        const roomName = `channel_${channelId}`;
+        io.to(roomName).emit('receive_message', {
+            id: savedMessage.id.toString(),
+            message: message,
+            author: author,
+            avatar: senderUser?.avatar || null,
+            avatarColor: senderUser?.avatarColor || null,
+            userId: savedMessage.userId,
+            type: type || 'text',
+            channelId: channelId,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    }
+});
+```
+
+<Note>
+  Messages are persisted to the database before broadcasting to ensure delivery and enable message history.
+</Note>
+
+---
+
+### receive_message
+
+<ResponseField name="Event Type" type="server-to-client">
+  Receive a new message in the current channel or DM
+</ResponseField>
+
+**Direction:** Server → Client
+
+**Description:** The server broadcasts this event to all clients in a room when a new message is sent.
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique message ID
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  The message content (text, URL, or file path)
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  Username of the message sender
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  URL to the sender's profile picture
+</ResponseField>
+
+<ResponseField name="avatarColor" type="string | null">
+  Fallback color class for avatar (e.g., "bg-blue-100")
+</ResponseField>
+
+<ResponseField name="userId" type="number">
+  User ID of the sender
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Message type: `text`, `image`, `file`, or `audio`
+</ResponseField>
+
+<ResponseField name="time" type="string">
+  Formatted timestamp (e.g., "02:45 PM")
+</ResponseField>
+
+<ResponseField name="channelId" type="number">
+  Channel ID (only for channel messages)
+</ResponseField>
+
+<ResponseField name="receiverId" type="number">
+  Receiver ID (only for DM messages)
+</ResponseField>
+
+**Example Payload:**
+
+```json Channel Message
+{
+  "id": "12345",
+  "message": "Hello team!",
+  "author": "john_doe",
+  "avatar": "https://example.com/avatar.jpg",
+  "avatarColor": null,
+  "userId": 123,
+  "type": "text",
+  "channelId": 5,
+  "time": "02:45 PM"
+}
+```
+
+```json Direct Message
+{
+  "id": "67890",
+  "message": "Hey, how are you?",
+  "author": "jane_smith",
+  "avatar": null,
+  "avatarColor": "bg-blue-100",
+  "userId": 456,
+  "type": "text",
+  "receiverId": 123,
+  "time": "03:12 PM"
+}
+```
+
+**Client Handler:**
+
+```javascript Client Code
+socket.on("receive_message", (data) => {
+    console.log(`New message from ${data.author}: ${data.message}`);
+    
+    // Add message to chat UI
+    setMessages((prev) => [...prev, data]);
+});
+```
+
+---
+
+### load_history
+
+<ResponseField name="Event Type" type="server-to-client">
+  Load message history for a channel or DM
+</ResponseField>
+
+**Direction:** Server → Client
+
+**Description:** The server emits this event immediately after a client joins a channel or DM. It contains the last 50 messages (or all messages if fewer than 50 exist).
+
+#### Response Format
+
+Returns an array of message objects:
+
+<ResponseField name="id" type="string">
+  Unique message ID
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  The message content
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  Username of the message sender
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  URL to the sender's profile picture
+</ResponseField>
+
+<ResponseField name="avatarColor" type="string | null">
+  Fallback color class for avatar
+</ResponseField>
+
+<ResponseField name="userId" type="number">
+  User ID of the sender
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Message type: `text`, `image`, `file`, or `audio`
+</ResponseField>
+
+<ResponseField name="time" type="string">
+  Formatted timestamp
+</ResponseField>
+
+<ResponseField name="channelId" type="number">
+  Channel ID (only for channel messages)
+</ResponseField>
+
+**Example Payload:**
+
+```json
+[
+  {
+    "id": "1001",
+    "message": "Welcome to the channel!",
+    "author": "admin",
+    "avatar": null,
+    "avatarColor": "bg-purple-100",
+    "userId": 1,
+    "type": "text",
+    "channelId": 5,
+    "time": "09:00 AM"
+  },
+  {
+    "id": "1002",
+    "message": "Thanks for having me!",
+    "author": "john_doe",
+    "avatar": "https://example.com/john.jpg",
+    "avatarColor": null,
+    "userId": 123,
+    "type": "text",
+    "channelId": 5,
+    "time": "09:05 AM"
+  }
+]
+```
+
+**Client Handler:**
+
+```javascript Client Code
+socket.on("load_history", (history) => {
+    console.log(`Loaded ${history.length} messages`);
+    
+    // Replace current messages with history
+    setMessages(history);
+});
+```
+
+#### Server Logic
+
+```javascript Backend Handler
+// For channels: Load last 50 messages that haven't expired
+const pastMessages = await prisma.message.findMany({
+    where: {
+        channelId: channel.id,
+        OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } }
+        ]
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+    include: { user: true }
+});
+
+socket.emit('load_history', pastMessages.map(msg => ({
+    id: msg.id.toString(),
+    channelId: msg.channelId,
+    userId: msg.userId,
+    author: msg.author || msg.user?.username || "Unknown",
+    avatar: msg.user?.avatar || null,
+    avatarColor: msg.user?.avatarColor || null,
+    message: msg.content,
+    type: msg.type || 'text',
+    time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+})));
+```
+
+<Note>
+  **Message Limits:**
+  - Maximum 50 messages are loaded per channel/DM
+  - Expired messages (based on `expiresAt` field) are excluded from channel history
+  - Messages are ordered chronologically (oldest first)
+</Note>
+
+---
+
+### error
+
+<ResponseField name="Event Type" type="server-to-client">
+  Error notification from the server
+</ResponseField>
+
+**Direction:** Server → Client
+
+**Description:** The server emits this event when an error occurs (e.g., channel not found, permission denied).
+
+**Example Payload:**
+
+```json
+"Channel not found"
+```
+
+**Client Handler:**
+
+```javascript Client Code
+socket.on("error", (errorMessage) => {
+    console.error("Socket Error:", errorMessage);
+    
+    // Show error notification to user
+    alert(errorMessage);
+});
+```
+
+**Server Emission:**
+
+```javascript Backend
+if (!channel) {
+    socket.emit('error', 'Channel not found');
+    return;
+}
+```
+
+---
+
+### disconnect
+
+<ResponseField name="Event Type" type="bidirectional">
+  Emitted when a socket connection is terminated
+</ResponseField>
+
+**Direction:** Client ↔ Server (automatic)
+
+**Description:** This event is automatically emitted when a client disconnects (intentionally or due to network issues). The server can handle cleanup logic when a user disconnects.
+
+**Server Handler:**
+
+```javascript Backend
+socket.on('disconnect', () => {
+    console.log('User disconnected', socket.id);
+    
+    // Cleanup: Remove user from active users list, etc.
+});
+```
+
+**Client Handler:**
+
+```javascript Client Code
+socket.on('disconnect', (reason) => {
+    console.log('Disconnected:', reason);
+    
+    // Update UI to show disconnected state
+    setSocketConnected(false);
+});
+```
+
+<Warning>
+  **Auto-reconnection:** By default, the Socket.io client will attempt to reconnect automatically. In OpsChat, `autoConnect` is set to `false`, so reconnection must be handled manually.
+</Warning>
+
+---
+
+## Complete Usage Example
+
+### React Frontend Integration
+
+```typescript Complete Example
+import { io, Socket } from "socket.io-client";
+import { useState, useEffect } from "react";
+
+const socket = io(import.meta.env.VITE_API_URL || "", {
+    autoConnect: false
+});
+
+function ChatComponent() {
+    const [messages, setMessages] = useState([]);
+    const [messageInput, setMessageInput] = useState("");
+    const [connected, setConnected] = useState(false);
+    
+    const userId = localStorage.getItem("userId");
+    const username = localStorage.getItem("opschat_username");
+    const channelId = 5; // Example channel ID
+
+    useEffect(() => {
+        // Connect socket
+        socket.connect();
+
+        // Connection events
+        socket.on("connect", () => {
+            console.log("Connected:", socket.id);
+            setConnected(true);
+
+            // Join channel
+            socket.emit("join_channel", {
+                channelId: channelId,
+                userId: userId
+            });
+        });
+
+        socket.on("disconnect", () => {
+            setConnected(false);
+        });
+
+        // Message events
+        socket.on("receive_message", (data) => {
+            setMessages((prev) => [...prev, data]);
+        });
+
+        socket.on("load_history", (history) => {
+            setMessages(history);
+        });
+
+        socket.on("error", (err) => {
+            console.error("Socket error:", err);
+        });
+
+        // Cleanup
+        return () => {
+            socket.off("connect");
+            socket.off("disconnect");
+            socket.off("receive_message");
+            socket.off("load_history");
+            socket.off("error");
+        };
+    }, []);
+
+    const sendMessage = () => {
+        if (!messageInput.trim()) return;
+
+        socket.emit("send_message", {
+            message: messageInput,
+            author: username,
+            userId: parseInt(userId),
+            channelId: channelId,
+            type: "text",
+            expiresIn: null
+        });
+
+        setMessageInput("");
+    };
+
+    return (
+        <div>
+            <div>Status: {connected ? "Connected" : "Disconnected"}</div>
+            
+            <div>
+                {messages.map((msg, i) => (
+                    <div key={i}>
+                        <strong>{msg.author}:</strong> {msg.message} ({msg.time})
+                    </div>
+                ))}
+            </div>
+
+            <input
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            />
+            <button onClick={sendMessage}>Send</button>
+        </div>
+    );
+}
+```
+
+---
+
+## Message Types
+
+OpsChat supports multiple message types for rich media communication:
+
+<CardGroup cols={2}>
+  <Card title="Text Messages" icon="message">
+    Standard text messages with markdown support
+    ```json
+    {
+      "type": "text",
+      "message": "Hello world!"
+    }
+    ```
+  </Card>
+
+  <Card title="Image Messages" icon="image">
+    Image files uploaded to S3
+    ```json
+    {
+      "type": "image",
+      "message": "https://s3.amazonaws.com/..."
+    }
+    ```
+  </Card>
+
+  <Card title="File Attachments" icon="file">
+    Document and file uploads
+    ```json
+    {
+      "type": "file",
+      "message": "https://s3.amazonaws.com/..."
+    }
+    ```
+  </Card>
+
+  <Card title="Audio Messages" icon="microphone">
+    Voice notes and audio recordings
+    ```json
+    {
+      "type": "audio",
+      "message": "https://s3.amazonaws.com/..."
+    }
+    ```
+  </Card>
+</CardGroup>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always handle disconnections gracefully">
+    Implement reconnection logic and inform users when the connection is lost. Store messages locally and retry sending when reconnected.
+    
+    ```javascript
+    socket.on("disconnect", (reason) => {
+        if (reason === "io server disconnect") {
+            // Server disconnected, reconnect manually
+            socket.connect();
+        }
+        // else: client disconnected, automatic reconnection
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Clean up event listeners">
+    Always remove event listeners when components unmount to prevent memory leaks.
+    
+    ```javascript
+    useEffect(() => {
+        socket.on("receive_message", handleMessage);
+        
+        return () => {
+            socket.off("receive_message", handleMessage);
+        };
+    }, []);
+    ```
+  </Accordion>
+
+  <Accordion title="Validate data before emitting">
+    Always validate and sanitize data before sending to the server.
+    
+    ```javascript
+    const sendMessage = (message) => {
+        if (!message || message.trim().length === 0) {
+            return; // Don't send empty messages
+        }
+        
+        if (message.length > 5000) {
+            alert("Message too long");
+            return;
+        }
+        
+        socket.emit("send_message", { message, ... });
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Handle errors appropriately">
+    Display user-friendly error messages and log technical details for debugging.
+    
+    ```javascript
+    socket.on("error", (error) => {
+        console.error("Socket error:", error);
+        showNotification("Failed to perform action. Please try again.");
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection fails immediately">
+    **Possible causes:**
+    - Backend server is not running
+    - Incorrect `VITE_API_URL` environment variable
+    - CORS configuration blocking connection
+    
+    **Solution:**
+    - Verify backend is running on the expected port
+    - Check browser console for CORS errors
+    - Ensure Socket.io server is properly configured
+  </Accordion>
+
+  <Accordion title="Messages not received">
+    **Possible causes:**
+    - Not joined to the correct room
+    - Event listener not registered
+    - User is filtering messages by channelId/receiverId
+    
+    **Solution:**
+    - Verify `join_channel` was called successfully
+    - Check that `receive_message` event listener is registered
+    - Log all incoming messages to debug filtering logic
+  </Accordion>
+
+  <Accordion title="History not loading">
+    **Possible causes:**
+    - Database query error
+    - Channel/DM doesn't exist
+    - No messages in the channel yet
+    
+    **Solution:**
+    - Check server logs for database errors
+    - Verify channelId or dmUserId is correct
+    - Emit test messages to populate history
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Channels API" icon="hashtag" href="/api/channels">
+    View HTTP endpoints for channel management
+  </Card>
+
+  <Card title="File Upload API" icon="upload" href="/api/uploads">
+    Learn how to upload files and media to S3
+  </Card>
+
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    Implement secure user authentication
+  </Card>
+
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Understand the data models for messages and channels
+  </Card>
+</CardGroup>

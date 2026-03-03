@@ -1,0 +1,530 @@
+---
+title: 'File Uploads'
+description: 'Upload images, voice notes, and files in channels and DMs'
+icon: 'cloud-arrow-up'
+---
+
+## Overview
+
+OpsChat supports rich media sharing including images, voice notes, and files. All uploads are stored securely in MinIO (S3-compatible) object storage.
+
+<Info>
+  **Presigned URLs**: OpsChat uses secure presigned URLs to upload files directly to S3, ensuring fast and secure transfers.
+</Info>
+
+---
+
+## Uploading Images
+
+Share screenshots, photos, and diagrams directly in your conversations.
+
+### How to Upload Images
+
+<Steps>
+  <Step title="Click the Attachment Icon">
+    In any channel or DM, click the **📎 paperclip icon** in the message input area.
+    
+    This opens your device's file picker.
+  </Step>
+  
+  <Step title="Select Your Image">
+    Choose an image file from your computer.
+    
+    **Supported formats:**
+    - JPEG/JPG
+    - PNG
+    - GIF
+    - WebP
+    - SVG
+  </Step>
+  
+  <Step title="Upload Progress">
+    OpsChat will:
+    1. Request a presigned upload URL from the server
+    2. Upload the file directly to MinIO (S3) storage
+    3. Send the public file URL as a message
+    
+    <Note>
+      You'll see a loading indicator during upload. Large files may take a few seconds.
+    </Note>
+  </Step>
+  
+  <Step title="Image Appears in Chat">
+    Once uploaded, the image appears inline in the conversation.
+    
+    **Features:**
+    - Click to view full-size in a new tab
+    - Automatically scaled to fit the chat window
+    - Maximum display height: 320px
+  </Step>
+</Steps>
+
+### Image Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Optimize File Size" icon="compress">
+    Compress large images before uploading to improve load times:
+    - Use PNG for screenshots
+    - Use JPEG for photos
+    - Aim for under 2MB per image
+  </Card>
+  
+  <Card title="Use Descriptive Names" icon="file-signature">
+    Rename files before uploading:
+    - ✅ `login-bug-screenshot.png`
+    - ✅ `architecture-diagram-v2.jpg`
+    - ❌ `IMG_1234.jpg`
+  </Card>
+</CardGroup>
+
+<Tip>
+  **Paste from Clipboard**: In most browsers, you can paste images directly (Ctrl+V or Cmd+V) into the message input. This feature may vary by browser.
+</Tip>
+
+---
+
+## Recording Voice Notes
+
+Send quick audio messages without typing. Perfect for detailed explanations or when you're on the go.
+
+### How to Record Voice Notes
+
+<Steps>
+  <Step title="Click the Microphone Icon">
+    In the message input area, click the **🎤 microphone icon**.
+    
+    Your browser will request microphone permissions.
+  </Step>
+  
+  <Step title="Grant Microphone Access">
+    Click **Allow** when your browser asks for microphone access.
+    
+    <Warning>
+      **First-time only**: You'll need to grant permission once per browser. If denied, you'll need to enable it in browser settings.
+    </Warning>
+  </Step>
+  
+  <Step title="Start Recording">
+    Once permission is granted, recording starts automatically.
+    
+    You'll see:
+    - A red pulsing indicator
+    - **"Recording..."** text
+    - Stop (⏹️) and Cancel (❌) buttons
+    
+    <Info>
+      Speak clearly into your microphone. The recording captures until you press Stop.
+    </Info>
+  </Step>
+  
+  <Step title="Stop or Cancel">
+    <Tabs>
+      <Tab title="Stop Recording">
+        Click the **⏹️ Stop** button to finish recording.
+        
+        - Audio is automatically uploaded to MinIO
+        - A playable audio player appears in the chat
+        - Recipients can play it inline
+      </Tab>
+      
+      <Tab title="Cancel Recording">
+        Click the **❌ Cancel** button to discard the recording.
+        
+        - Audio is deleted and not sent
+        - No message appears in the chat
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Voice Note Sent">
+    Your voice note appears in the conversation with a built-in audio player.
+    
+    **Features:**
+    - Play/pause controls
+    - Volume control
+    - Download option
+  </Step>
+</Steps>
+
+### Voice Note Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep Recordings Short">
+    Aim for **under 2 minutes** per voice note:
+    - Recipients are more likely to listen
+    - Smaller file sizes upload faster
+    - Easier to reference later
+    
+    For longer explanations, consider breaking into multiple recordings.
+  </Accordion>
+  
+  <Accordion title="Test Your Microphone">
+    Before recording:
+    - Check your microphone is selected in system settings
+    - Test volume levels
+    - Reduce background noise
+  </Accordion>
+  
+  <Accordion title="Use Voice Notes For">
+    - Quick status updates
+    - Detailed explanations
+    - When typing is inconvenient
+    - Adding personal touch to messages
+    
+    Avoid voice notes for:
+    - Information that needs to be searched later
+    - Long lists or data
+    - Confidential information (prefer text for better security)
+  </Accordion>
+</AccordionGroup>
+
+### Technical Details
+
+| Property | Value |
+|----------|-------|
+| **Format** | WebM (audio/webm) |
+| **Codec** | Opus (browser default) |
+| **Bitrate** | Browser-dependent (typically 128kbps) |
+| **Max Duration** | No limit (but recommended < 2 minutes) |
+
+<Note>
+  Voice notes are stored as `.webm` files with auto-generated names like `voice-note-1234567890.webm`.
+</Note>
+
+---
+
+## Uploading Files
+
+Share documents, PDFs, code files, and other attachments.
+
+### How to Upload Files
+
+<Steps>
+  <Step title="Click the Attachment Icon">
+    Click the **📎 paperclip icon** in the message input area.
+  </Step>
+  
+  <Step title="Select Your File">
+    Choose any file from your computer.
+    
+    **Supported file types:**
+    - Documents: PDF, DOC, DOCX, TXT, MD
+    - Spreadsheets: XLS, XLSX, CSV
+    - Presentations: PPT, PPTX
+    - Code: JS, PY, JAVA, etc.
+    - Archives: ZIP, TAR, GZ
+    - Any other file type
+  </Step>
+  
+  <Step title="File Uploads to S3">
+    The file is uploaded directly to MinIO storage using a presigned URL.
+    
+    <Info>
+      Large files may take longer to upload depending on your internet speed.
+    </Info>
+  </Step>
+  
+  <Step title="File Link Appears in Chat">
+    A clickable link appears in the conversation:
+    
+    ```
+    📎 quarterly-report-Q4.pdf
+    ```
+    
+    Recipients can click to download the file.
+  </Step>
+</Steps>
+
+### File Types & Limits
+
+<Tabs>
+  <Tab title="Images">
+    **Supported Formats:**
+    - JPEG/JPG
+    - PNG
+    - GIF
+    - WebP
+    - SVG
+    
+    **Recommended Limits:**
+    - Max size: 5MB per image
+    - Larger images will still upload but may load slowly
+  </Tab>
+  
+  <Tab title="Audio (Voice Notes)">
+    **Supported Formats:**
+    - WebM (default browser recording format)
+    - MP3 (via file upload)
+    - WAV (via file upload)
+    - M4A (via file upload)
+    
+    **Recommended Limits:**
+    - Max duration: 2 minutes
+    - Max size: 10MB per audio file
+  </Tab>
+  
+  <Tab title="Documents & Files">
+    **Supported Formats:**
+    - All file types are supported
+    - No file type restrictions
+    
+    **Recommended Limits:**
+    - Max size: 50MB per file
+    - Larger files may timeout during upload
+    
+    <Warning>
+      Files over 50MB may fail to upload depending on your network speed and server timeout settings.
+    </Warning>
+  </Tab>
+</Tabs>
+
+<Note>
+  **No Hard Limits**: OpsChat doesn't enforce strict file size limits, but your network speed and server configuration may impose practical limits.
+</Note>
+
+---
+
+## Storage: MinIO (S3-Compatible)
+
+All uploaded files are stored in MinIO, an open-source S3-compatible object storage system.
+
+### How It Works
+
+<Steps>
+  <Step title="Request Presigned URL">
+    When you select a file, OpsChat requests a presigned upload URL from the backend.
+    
+    **API Request:**
+    ```bash
+    POST /api/upload-url
+    {
+      "filename": "screenshot.png",
+      "fileType": "image/png"
+    }
+    ```
+  </Step>
+  
+  <Step title="Backend Generates URL">
+    The server generates a presigned URL that's valid for **60 seconds**.
+    
+    **API Response:**
+    ```json
+    {
+      "uploadUrl": "http://minio:9000/opschat/1234567890-screenshot.png?X-Amz-...",
+      "fileUrl": "http://localhost:9000/opschat/1234567890-screenshot.png"
+    }
+    ```
+  </Step>
+  
+  <Step title="Client Uploads Directly">
+    Your browser uploads the file directly to MinIO using a `PUT` request:
+    
+    ```javascript
+    fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type }
+    })
+    ```
+    
+    <Info>
+      This direct upload bypasses the backend, improving speed and reducing server load.
+    </Info>
+  </Step>
+  
+  <Step title="File URL Sent as Message">
+    Once uploaded, the public file URL is sent as a message:
+    
+    ```
+    http://localhost:9000/opschat/1234567890-screenshot.png
+    ```
+    
+    All users in the channel/DM can access this URL.
+  </Step>
+</Steps>
+
+### Security Features
+
+<CardGroup cols={2}>
+  <Card title="Presigned URLs" icon="key">
+    Upload URLs expire after 60 seconds, preventing unauthorized uploads.
+  </Card>
+  
+  <Card title="Unique Filenames" icon="fingerprint">
+    Files are renamed with timestamps to avoid collisions:
+    
+    `screenshot.png` → `1234567890-screenshot.png`
+  </Card>
+  
+  <Card title="Public Read Access" icon="eye">
+    Files are stored with public read permissions, but:
+    - URLs are not guessable (UUID-based)
+    - Only shared with authorized channel/DM members
+  </Card>
+  
+  <Card title="No Executable Files" icon="shield">
+    While all file types are allowed, browsers won't execute uploaded files for security.
+  </Card>
+</CardGroup>
+
+---
+
+## Viewing Uploaded Files
+
+Files appear differently in the chat based on their type.
+
+<Tabs>
+  <Tab title="Images">
+    **Inline Preview**
+    
+    Images display directly in the chat with:
+    - Automatic scaling to fit the chat width
+    - Max height of 320px
+    - Click to open full-size in a new tab
+    
+    ```
+    [Image Preview: 1234567890-screenshot.png]
+    ```
+  </Tab>
+  
+  <Tab title="Voice Notes">
+    **Audio Player**
+    
+    Voice notes show an inline audio player with:
+    - Play/pause button
+    - Volume control
+    - Progress bar
+    - Download option
+    
+    ```
+    🎤 [Audio Player: voice-note-1234567890.webm]
+    ```
+  </Tab>
+  
+  <Tab title="Other Files">
+    **Download Link**
+    
+    Documents and other files show as clickable links:
+    
+    ```
+    📎 quarterly-report-Q4.pdf
+    ```
+    
+    Click to download the file to your device.
+  </Tab>
+</Tabs>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Upload fails with error">
+    **"Failed to upload file"** error:
+    
+    **Possible causes:**
+    - File too large (try compressing)
+    - Network timeout (check your connection)
+    - MinIO server unavailable (contact admin)
+    
+    **Solutions:**
+    - Retry the upload
+    - Check your internet connection
+    - Try a smaller file
+    - Clear browser cache and refresh
+  </Accordion>
+  
+  <Accordion title="Microphone not working">
+    **"Could not access microphone"** error:
+    
+    **Browser permissions:**
+    - Chrome: Settings → Privacy and Security → Site Settings → Microphone
+    - Firefox: Settings → Privacy & Security → Permissions → Microphone
+    - Safari: Preferences → Websites → Microphone
+    
+    **System permissions:**
+    - macOS: System Preferences → Security & Privacy → Microphone
+    - Windows: Settings → Privacy → Microphone
+    
+    Ensure both browser and system permissions are enabled for OpsChat.
+  </Accordion>
+  
+  <Accordion title="Images not loading">
+    If uploaded images show a broken image icon:
+    
+    - Check your internet connection
+    - Verify the MinIO server is running
+    - Try opening the image URL directly in a new tab
+    - Clear browser cache and reload the page
+    
+    If the image URL is inaccessible, the file may have been deleted or the MinIO server may be down.
+  </Accordion>
+  
+  <Accordion title="Voice note has no audio">
+    If your voice note uploads but has no sound:
+    
+    - Check your microphone was selected before recording
+    - Verify your system microphone is working (test in another app)
+    - Ensure you clicked Stop (not Cancel) after recording
+    - Try recording a new voice note
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Organize Your Files">
+    Use clear, descriptive filenames:
+    - Include dates: `budget-2024-q1.xlsx`
+    - Add version numbers: `proposal-v3-final.pdf`
+    - Be specific: `login-bug-screenshot.png`
+    
+    This makes files easier to find and reference later.
+  </Accordion>
+  
+  <Accordion title="Compress Large Files">
+    Before uploading:
+    - Compress images (use PNG for screenshots, JPEG for photos)
+    - Zip multiple files together
+    - Consider alternative sharing methods for files over 50MB (Google Drive, Dropbox, etc.)
+  </Accordion>
+  
+  <Accordion title="Respect Storage Limits">
+    While OpsChat doesn't enforce strict limits:
+    - Avoid uploading unnecessary files
+    - Delete old files you no longer need (feature coming soon)
+    - Use external services for large archives or backups
+  </Accordion>
+  
+  <Accordion title="Test Voice Notes">
+    Before sending important voice messages:
+    - Test your microphone with a short recording
+    - Play it back to verify audio quality
+    - Speak clearly and at a moderate pace
+    - Reduce background noise
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Features" icon="sparkles" href="/user-guide/ai-features">
+    Use AI translation and summarization on messages
+  </Card>
+  
+  <Card title="Channels & Workspaces" icon="hashtag" href="/user-guide/channels-workspaces">
+    Learn about channels and team collaboration
+  </Card>
+  
+  <Card title="Direct Messages" icon="comment" href="/user-guide/direct-messages">
+    Send private 1-on-1 messages
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/uploads">
+    Integrate file uploads with the API
+  </Card>
+</CardGroup>

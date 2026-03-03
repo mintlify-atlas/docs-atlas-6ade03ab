@@ -1,0 +1,305 @@
+---
+title: Local Development Setup
+description: Get OpsChat running on your local machine
+icon: wrench
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+<CardGroup cols={2}>
+  <Card title="Node.js 20+" icon="node-js">
+    Required for running the backend and frontend
+  </Card>
+  <Card title="Docker & Docker Compose" icon="docker">
+    For running PostgreSQL, Redis, and MinIO
+  </Card>
+  <Card title="Git" icon="git">
+    Version control
+  </Card>
+  <Card title="kubectl & KIND" icon="kubernetes">
+    Optional: For Kubernetes testing
+  </Card>
+</CardGroup>
+
+## Quick Start Options
+
+### Option 1: Docker Compose (Recommended)
+
+The fastest way to get OpsChat running locally:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/yourusername/opschat.git
+    cd opschat
+    ```
+  </Step>
+
+  <Step title="Set up environment variables">
+    Create a `.env` file in the project root:
+    
+    ```bash .env
+    GROQ_API_KEY=your_groq_api_key_here
+    VITE_API_URL=http://localhost:3000
+    ```
+    
+    <Note>
+      Get your free Groq API key from [console.groq.com](https://console.groq.com)
+    </Note>
+  </Step>
+
+  <Step title="Start all services">
+    ```bash
+    docker-compose up
+    ```
+    
+    This will start:
+    - PostgreSQL database (port 5432)
+    - Redis cache (port 6379)
+    - MinIO object storage (ports 9000, 9001)
+    - Backend API (port 3000)
+    - Frontend UI (port 8080)
+  </Step>
+
+  <Step title="Access the application">
+    Open your browser to [http://localhost:8080](http://localhost:8080)
+    
+    Default credentials:
+    - Email: `admin@opschat.io`
+    - Password: `password123`
+  </Step>
+</Steps>
+
+### Option 2: Local Development (Without Docker)
+
+For active development with hot-reloading:
+
+<Steps>
+  <Step title="Start infrastructure services">
+    Start only the database, Redis, and MinIO:
+    
+    ```bash
+    docker-compose up postgres redis minio minio-init
+    ```
+  </Step>
+
+  <Step title="Set up the backend">
+    Navigate to the backend directory and install dependencies:
+    
+    ```bash
+    cd opschat-backend
+    npm install
+    ```
+    
+    Create a `.env` file in `opschat-backend/`:
+    
+    ```bash .env
+    DATABASE_URL=postgres://admin:password123@localhost:5432/opschat
+    REDIS_HOST=localhost
+    REDIS_PORT=6379
+    S3_ENDPOINT=http://localhost:9000
+    S3_PUBLIC_URL=http://localhost:9000
+    S3_ACCESS_KEY=admin
+    S3_SECRET_KEY=password123
+    S3_BUCKET=opschat-uploads
+    S3_USE_SSL=false
+    PORT=3000
+    CLIENT_URL=http://localhost:5173
+    JWT_SECRET=dev_secret_key_123
+    GROQ_API_KEY=your_groq_api_key
+    ```
+  </Step>
+
+  <Step title="Run database migrations">
+    ```bash
+    npx prisma migrate deploy
+    npx prisma db seed
+    ```
+  </Step>
+
+  <Step title="Start the backend in development mode">
+    ```bash
+    npm run dev
+    ```
+    
+    The API will be available at [http://localhost:3000](http://localhost:3000)
+  </Step>
+
+  <Step title="Set up the frontend">
+    Open a new terminal and navigate to the frontend directory:
+    
+    ```bash
+    cd opschat-frontend
+    npm install
+    ```
+    
+    Create a `.env` file in `opschat-frontend/`:
+    
+    ```bash .env
+    VITE_API_URL=http://localhost:3000
+    ```
+  </Step>
+
+  <Step title="Start the frontend development server">
+    ```bash
+    npm run dev
+    ```
+    
+    The UI will be available at [http://localhost:5173](http://localhost:5173)
+  </Step>
+</Steps>
+
+## Database Management
+
+### Running Migrations
+
+After making changes to the Prisma schema:
+
+```bash
+cd opschat-backend
+npx prisma migrate dev --name description_of_changes
+```
+
+### Resetting the Database
+
+<Warning>
+  This will delete all data in your local database
+</Warning>
+
+```bash
+npx prisma migrate reset
+```
+
+This command will:
+1. Drop the database
+2. Create a new database
+3. Run all migrations
+4. Run the seed script
+
+### Viewing the Database
+
+Use Prisma Studio to browse and edit your data:
+
+```bash
+npx prisma studio
+```
+
+This opens a web interface at [http://localhost:5555](http://localhost:5555)
+
+## Development Workflow
+
+### File Structure
+
+```
+OpsChat/
+├── opschat-backend/          # Node.js + Express + Socket.io
+│   ├── src/
+│   │   ├── server.js         # Main entry point
+│   │   ├── routes/           # API endpoints
+│   │   ├── services/         # Business logic
+│   │   └── config/           # Configuration
+│   ├── prisma/
+│   │   ├── schema.prisma     # Database schema
+│   │   ├── seed.js           # Seed data
+│   │   └── migrations/       # Migration history
+│   └── __tests__/            # Test files
+│
+├── opschat-frontend/         # React + TypeScript + Vite
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── pages/            # Page components
+│   │   ├── services/         # API client
+│   │   └── App.tsx           # Root component
+│   └── public/               # Static assets
+│
+├── k8s/                      # Kubernetes manifests
+├── docker-compose.yml        # Local development setup
+└── deploy.sh                 # Kubernetes deployment script
+```
+
+### Hot Reloading
+
+<Tabs>
+  <Tab title="Backend">
+    The backend uses `nodemon` for automatic reloading:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    Any changes to `.js` files in `src/` will trigger a restart.
+  </Tab>
+  
+  <Tab title="Frontend">
+    Vite provides instant hot module replacement (HMR):
+    
+    ```bash
+    npm run dev
+    ```
+    
+    Changes to React components update instantly without full page reload.
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    If you see "port already in use" errors:
+    
+    ```bash
+    # Find and kill the process using the port
+    lsof -ti:3000 | xargs kill -9  # Backend
+    lsof -ti:5173 | xargs kill -9  # Frontend
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    Ensure PostgreSQL is running:
+    
+    ```bash
+    docker-compose ps postgres
+    ```
+    
+    If it's not running, start it:
+    
+    ```bash
+    docker-compose up -d postgres
+    ```
+  </Accordion>
+
+  <Accordion title="Prisma Client out of sync">
+    Regenerate the Prisma Client:
+    
+    ```bash
+    npx prisma generate
+    ```
+  </Accordion>
+
+  <Accordion title="MinIO bucket not found">
+    Re-initialize MinIO:
+    
+    ```bash
+    docker-compose up minio-init
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Learn about the data models and relationships
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Run tests and write new ones
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Guidelines for contributing to OpsChat
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/authentication">
+    Explore the API endpoints
+  </Card>
+</CardGroup>

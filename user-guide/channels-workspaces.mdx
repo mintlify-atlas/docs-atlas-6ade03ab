@@ -1,0 +1,335 @@
+---
+title: 'Channels & Workspaces'
+description: 'Learn how to create channels, join teams, and collaborate in real-time'
+icon: 'hashtag'
+---
+
+## Overview
+
+Channels are the heart of OpsChat's team collaboration. Organize your team into workspaces and create focused channels for different projects, teams, or topics.
+
+<Info>
+  **Private by Default**: All channels are invite-only. Only users with the unique invite code can join.
+</Info>
+
+---
+
+## Creating a Channel
+
+Channel creators have full control over their channels and can share invite codes with team members.
+
+<Steps>
+  <Step title="Open the Create Channel Modal">
+    Click the **+** button in your workspace sidebar to open the channel creation dialog.
+  </Step>
+  
+  <Step title="Enter Channel Name">
+    Type your channel name. It will automatically be converted to lowercase with hyphens.
+    
+    <Tip>
+      Use descriptive names like `project-alpha`, `dev-team`, or `client-acme`
+    </Tip>
+    
+    **Naming Rules:**
+    - Lowercase letters and numbers
+    - Spaces automatically convert to hyphens
+    - Must be unique within your workspace
+  </Step>
+  
+  <Step title="Get Your Invite Code">
+    After creating the channel, you'll receive a unique invite code like:
+    
+    ```
+    a7f3e2c1-4b8d-4a2e-9f1c-6d5e8b3a9c2f
+    ```
+    
+    <Warning>
+      **Keep it secure**: Only you (the creator) can see this code. Share it privately with people you trust.
+    </Warning>
+  </Step>
+  
+  <Step title="Share the Invite Code">
+    Copy the invite code and send it to your team members via email, Slack, or secure messaging.
+    
+    They'll use this code to join your channel.
+  </Step>
+</Steps>
+
+---
+
+## Joining a Channel
+
+Received an invite code from a team member? Here's how to join their channel.
+
+<Steps>
+  <Step title="Click Join Channel">
+    In the sidebar, click the **Join Channel** button or the **+** icon.
+  </Step>
+  
+  <Step title="Enter the Invite Code">
+    Paste the invite code shared with you:
+    
+    ```
+    a7f3e2c1-4b8d-4a2e-9f1c-6d5e8b3a9c2f
+    ```
+  </Step>
+  
+  <Step title="Join and Start Chatting">
+    Click **Join Channel** and you'll immediately see the channel in your sidebar.
+    
+    You'll have access to:
+    - Full message history
+    - Real-time updates
+    - File uploads and voice notes
+    - AI features (translation, summarization)
+  </Step>
+</Steps>
+
+<Note>
+  If you see "Invalid invite code", double-check for typos or ask the channel creator for a fresh code.
+</Note>
+
+---
+
+## Channel Roles & Permissions
+
+OpsChat uses a simple role-based system to manage channel access and control.
+
+<Tabs>
+  <Tab title="Creator">
+    **Full Control**
+    
+    The user who created the channel has these exclusive permissions:
+    - View and share the invite code
+    - Edit the channel name
+    - Delete the channel
+    - All member permissions
+    
+    <Warning>
+      Deleting a channel is permanent and removes all messages, files, and members.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Member">
+    **Standard Access**
+    
+    Users who join via invite code become members and can:
+    - Send and receive messages
+    - Upload files and voice notes
+    - Use AI translation and summarization
+    - View message history
+    - See other channel members
+    
+    Members **cannot**:
+    - See or share the invite code
+    - Edit the channel name
+    - Delete the channel
+  </Tab>
+</Tabs>
+
+---
+
+## Real-Time Messaging
+
+OpsChat uses WebSocket technology to deliver messages instantly across all connected devices.
+
+### How It Works
+
+<Steps>
+  <Step title="Connection Established">
+    When you open a channel, your browser connects to the OpsChat server via WebSocket.
+    
+    You'll see a green **System Healthy** indicator in the channel header.
+  </Step>
+  
+  <Step title="Send a Message">
+    Type your message and press **Enter** or click the send button.
+    
+    Your message is:
+    1. Saved to the database
+    2. Broadcast to all channel members
+    3. Delivered in **under 100ms**
+  </Step>
+  
+  <Step title="Receive Updates">
+    Messages from other users appear instantly without refreshing.
+    
+    <Tip>
+      Click on any user's avatar or name to view their full profile.
+    </Tip>
+  </Step>
+</Steps>
+
+### Message History
+
+- Last **50 messages** are loaded automatically when you join
+- Messages are stored permanently (unless they use self-destruct mode)
+- Scroll up to see older messages
+
+---
+
+## Workspace Structure
+
+Workspaces are containers that organize multiple channels under one team or organization.
+
+```
+Workspace: "Acme Corp"
+├── #general
+├── #dev-team
+├── #design
+└── #client-support
+```
+
+### Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Channels" icon="layer-group">
+    Create unlimited channels within a workspace for different teams, projects, or topics.
+  </Card>
+  
+  <Card title="Workspace Members" icon="users">
+    Users who join any channel automatically become workspace members.
+  </Card>
+  
+  <Card title="Private by Default" icon="lock">
+    Channels are not listed publicly. Invite codes are required to join.
+  </Card>
+  
+  <Card title="Role-Based Access" icon="shield">
+    Channel creators have admin rights, while members have standard access.
+  </Card>
+</CardGroup>
+
+---
+
+## Managing Your Channels
+
+### Editing a Channel
+
+<Info>
+  Only the channel **creator** can edit channel settings.
+</Info>
+
+<Steps>
+  <Step title="Open Channel Settings">
+    Click the **⋮** menu icon in the channel header.
+  </Step>
+  
+  <Step title="Select Edit Channel">
+    Choose **Edit Channel** from the dropdown menu.
+  </Step>
+  
+  <Step title="Update Name">
+    Change the channel name and click **Save**.
+    
+    <Note>
+      The new name must still be unique within the workspace.
+    </Note>
+  </Step>
+</Steps>
+
+### Deleting a Channel
+
+<Warning>
+  **This action cannot be undone.** All messages, files, and member associations will be permanently deleted.
+</Warning>
+
+<Steps>
+  <Step title="Open Channel Settings">
+    Click the **⋮** menu icon in the channel header.
+  </Step>
+  
+  <Step title="Select Delete Channel">
+    Choose **Delete Channel** from the dropdown menu.
+  </Step>
+  
+  <Step title="Confirm Deletion">
+    Confirm you want to delete the channel and all its data.
+  </Step>
+</Steps>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Organize by Purpose">
+    Create separate channels for:
+    - Projects: `#project-launch`
+    - Teams: `#engineering`, `#marketing`
+    - Clients: `#client-acme`
+    - Topics: `#announcements`, `#random`
+  </Accordion>
+  
+  <Accordion title="Use Descriptive Names">
+    Good channel names are clear and searchable:
+    - ✅ `#ios-app-dev`
+    - ✅ `#q4-marketing`
+    - ❌ `#misc`
+    - ❌ `#stuff`
+  </Accordion>
+  
+  <Accordion title="Keep Invite Codes Secure">
+    - Don't post invite codes in public channels
+    - Use encrypted messaging to share codes
+    - Regenerate codes if they're compromised (contact support)
+  </Accordion>
+  
+  <Accordion title="Set Clear Channel Guidelines">
+    Pin a welcome message explaining:
+    - Channel purpose
+    - Who should join
+    - Communication norms
+    - Related channels
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages not appearing in real-time">
+    Check your connection status in the channel header:
+    - **Green "System Healthy"**: Connected
+    - **Red "Disconnected"**: Connection lost
+    
+    **Fix**: Refresh the page to reconnect.
+  </Accordion>
+  
+  <Accordion title="Can't see the invite code">
+    Only the channel **creator** can view the invite code.
+    
+    If you need to invite someone, ask the creator to share the code with you privately.
+  </Accordion>
+  
+  <Accordion title="Channel name already exists">
+    Channel names must be unique within a workspace.
+    
+    Try adding a suffix:
+    - `#dev-team-frontend`
+    - `#project-alpha-v2`
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Direct Messages" icon="message" href="/user-guide/direct-messages">
+    Learn how to send private messages to team members
+  </Card>
+  
+  <Card title="File Uploads" icon="upload" href="/user-guide/file-uploads">
+    Share images, voice notes, and files in channels
+  </Card>
+  
+  <Card title="AI Features" icon="sparkles" href="/user-guide/ai-features">
+    Use translation, summarization, and smart replies
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/channels">
+    Integrate OpsChat with your tools
+  </Card>
+</CardGroup>

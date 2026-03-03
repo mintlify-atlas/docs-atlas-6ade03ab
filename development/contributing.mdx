@@ -1,0 +1,521 @@
+---
+title: Contributing Guidelines
+description: How to contribute to OpsChat development
+icon: code-pull-request
+---
+
+## Welcome Contributors!
+
+Thank you for your interest in contributing to OpsChat! This guide will help you get started with contributing code, documentation, or bug reports.
+
+<Note>
+  OpsChat is an open-source project built to demonstrate DevOps practices. Contributions of all kinds are welcome!
+</Note>
+
+## Getting Started
+
+<Steps>
+  <Step title="Fork the repository">
+    Click the "Fork" button on GitHub to create your own copy of the repository.
+  </Step>
+  
+  <Step title="Clone your fork">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/opschat.git
+    cd opschat
+    ```
+  </Step>
+  
+  <Step title="Set up your development environment">
+    Follow the [Local Development Setup](/development/setup) guide to get OpsChat running locally.
+  </Step>
+  
+  <Step title="Create a feature branch">
+    ```bash
+    git checkout -b feature/your-feature-name
+    ```
+    
+    <Tip>
+      Use descriptive branch names like `feature/add-dark-mode` or `fix/socket-disconnect-bug`.
+    </Tip>
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### 1. Making Changes
+
+<Tabs>
+  <Tab title="Backend Changes">
+    Work in the `opschat-backend/` directory:
+    
+    ```bash
+    cd opschat-backend
+    npm run dev  # Start with hot-reload
+    ```
+    
+    **File Structure:**
+    - `src/routes/` - API endpoints
+    - `src/services/` - Business logic
+    - `src/config/` - Configuration
+    - `prisma/schema.prisma` - Database schema
+  </Tab>
+  
+  <Tab title="Frontend Changes">
+    Work in the `opschat-frontend/` directory:
+    
+    ```bash
+    cd opschat-frontend
+    npm run dev  # Start Vite dev server
+    ```
+    
+    **File Structure:**
+    - `src/components/` - React components
+    - `src/pages/` - Page components
+    - `src/services/` - API client
+    - `src/App.tsx` - Root component
+  </Tab>
+  
+  <Tab title="Infrastructure">
+    Changes to deployment and orchestration:
+    
+    - `docker-compose.yml` - Local development
+    - `k8s/` - Kubernetes manifests
+    - `Dockerfile` - Container images
+    - `deploy.sh` - Deployment scripts
+  </Tab>
+</Tabs>
+
+### 2. Code Style and Conventions
+
+<CardGroup cols={2}>
+  <Card title="JavaScript/TypeScript" icon="js">
+    - Use ES6+ features
+    - Prefer `const` over `let`
+    - Use async/await over callbacks
+    - Follow existing formatting
+    
+    ```javascript
+    // Good
+    const fetchUser = async (id) => {
+      const user = await prisma.user.findUnique({ where: { id } });
+      return user;
+    };
+    
+    // Avoid
+    function fetchUser(id, callback) {
+      prisma.user.findUnique({ where: { id } })
+        .then(user => callback(null, user))
+        .catch(err => callback(err));
+    }
+    ```
+  </Card>
+  
+  <Card title="React Components" icon="react">
+    - Use functional components
+    - Use TypeScript types
+    - Keep components small and focused
+    - Use meaningful prop names
+    
+    ```typescript
+    // Good
+    interface MessageProps {
+      content: string;
+      author: string;
+      timestamp: Date;
+    }
+    
+    const Message: React.FC<MessageProps> = ({ 
+      content, 
+      author, 
+      timestamp 
+    }) => {
+      return (
+        <div className="message">
+          {/* ... */}
+        </div>
+      );
+    };
+    ```
+  </Card>
+</CardGroup>
+
+### 3. Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|----------|
+| Files | kebab-case | `user-profile.js` |
+| Components | PascalCase | `UserProfile.tsx` |
+| Functions | camelCase | `getUserById()` |
+| Constants | SCREAMING_SNAKE_CASE | `MAX_FILE_SIZE` |
+| Database Models | PascalCase | `User`, `Channel` |
+| Routes | kebab-case | `/api/friend-requests` |
+
+### 4. Writing Tests
+
+<Warning>
+  All new features must include tests. PRs without tests may not be merged.
+</Warning>
+
+<Tabs>
+  <Tab title="Backend Tests">
+    Add tests to `__tests__/routes/` or `__tests__/integration/`:
+    
+    ```javascript
+    // __tests__/routes/your-feature.test.js
+    const request = require('supertest');
+    const app = require('../../src/app');
+    
+    describe('Your Feature', () => {
+      test('should do something', async () => {
+        const response = await request(app)
+          .post('/api/your-endpoint')
+          .send({ data: 'test' })
+          .expect(200);
+        
+        expect(response.body).toHaveProperty('success', true);
+      });
+    });
+    ```
+    
+    Run tests:
+    ```bash
+    npm test
+    npm run test:coverage
+    ```
+  </Tab>
+  
+  <Tab title="Frontend Tests">
+    (Coming soon - Vitest setup in progress)
+    
+    ```typescript
+    // Component.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { Component } from './Component';
+    
+    test('renders component', () => {
+      render(<Component />);
+      expect(screen.getByText('Hello')).toBeInTheDocument();
+    });
+    ```
+  </Tab>
+</Tabs>
+
+### 5. Database Changes
+
+If you modify the Prisma schema:
+
+<Steps>
+  <Step title="Update schema.prisma">
+    ```prisma
+    model YourModel {
+      id        Int      @id @default(autoincrement())
+      field     String
+      createdAt DateTime @default(now())
+    }
+    ```
+  </Step>
+  
+  <Step title="Create migration">
+    ```bash
+    cd opschat-backend
+    npx prisma migrate dev --name add_your_model
+    ```
+  </Step>
+  
+  <Step title="Update seed if needed">
+    Modify `prisma/seed.js` to include test data for new models.
+  </Step>
+  
+  <Step title="Commit migration files">
+    Include the migration files in your PR:
+    ```bash
+    git add prisma/migrations/
+    git commit -m "Add YourModel to database schema"
+    ```
+  </Step>
+</Steps>
+
+## Submitting Your Contribution
+
+### Pre-submission Checklist
+
+<Accordion title="Before creating a PR">
+  - [ ] Code follows style conventions
+  - [ ] All tests pass (`npm test`)
+  - [ ] New features have tests
+  - [ ] Documentation is updated (if needed)
+  - [ ] No console.log statements left in code
+  - [ ] Commits are meaningful and well-formatted
+  - [ ] Branch is up to date with main
+</Accordion>
+
+### Running Tests Before Submitting
+
+```bash
+# Backend tests
+cd opschat-backend
+npm test
+npm run test:coverage
+
+# Lint check (if applicable)
+npm run lint
+```
+
+<Note>
+  Ensure all tests pass and coverage doesn't decrease significantly.
+</Note>
+
+### Creating a Pull Request
+
+<Steps>
+  <Step title="Push your changes">
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+  
+  <Step title="Create PR on GitHub">
+    1. Go to your fork on GitHub
+    2. Click "Compare & pull request"
+    3. Fill out the PR template
+  </Step>
+  
+  <Step title="Write a good PR description">
+    Use this template:
+    
+    ```markdown
+    ## Summary
+    Brief description of what this PR does
+    
+    ## Changes
+    - Added feature X
+    - Fixed bug Y
+    - Updated documentation Z
+    
+    ## Testing
+    - [ ] Added unit tests
+    - [ ] Tested manually
+    - [ ] All existing tests pass
+    
+    ## Screenshots (if applicable)
+    ![Before](url)
+    ![After](url)
+    
+    ## Related Issues
+    Closes #123
+    ```
+  </Step>
+  
+  <Step title="Wait for review">
+    Maintainers will review your PR and may request changes.
+  </Step>
+</Steps>
+
+### Commit Message Guidelines
+
+Use clear, conventional commit messages:
+
+<CodeGroup>
+```bash Features
+git commit -m "feat: add dark mode toggle"
+git commit -m "feat(api): add user profile endpoint"
+```
+
+```bash Fixes
+git commit -m "fix: resolve socket disconnect issue"
+git commit -m "fix(ui): correct button alignment"
+```
+
+```bash Documentation
+git commit -m "docs: update setup instructions"
+git commit -m "docs(api): add endpoint examples"
+```
+
+```bash Refactoring
+git commit -m "refactor: simplify auth logic"
+git commit -m "refactor(db): optimize query performance"
+```
+</CodeGroup>
+
+**Format:**
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types:**
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation
+- `style` - Formatting, missing semicolons, etc.
+- `refactor` - Code restructuring
+- `test` - Adding tests
+- `chore` - Maintenance tasks
+
+## Code Review Process
+
+### What Reviewers Look For
+
+<CardGroup cols={2}>
+  <Card title="Code Quality" icon="code">
+    - Clean, readable code
+    - No unnecessary complexity
+    - Proper error handling
+    - Performance considerations
+  </Card>
+  
+  <Card title="Testing" icon="flask">
+    - Adequate test coverage
+    - Edge cases handled
+    - Tests actually test the feature
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    - Code comments where needed
+    - API docs updated
+    - README updated (if needed)
+  </Card>
+  
+  <Card title="Best Practices" icon="star">
+    - Follows project patterns
+    - No security vulnerabilities
+    - Scalable design
+  </Card>
+</CardGroup>
+
+### Responding to Feedback
+
+<Steps>
+  <Step title="Address comments">
+    Make requested changes and push to the same branch:
+    
+    ```bash
+    # Make changes
+    git add .
+    git commit -m "fix: address review feedback"
+    git push
+    ```
+  </Step>
+  
+  <Step title="Reply to reviewers">
+    - Thank reviewers for their time
+    - Explain your reasoning if you disagree
+    - Mark conversations as resolved
+  </Step>
+  
+  <Step title="Request re-review">
+    Once changes are made, request a re-review from the maintainers.
+  </Step>
+</Steps>
+
+## Types of Contributions
+
+### Bug Reports
+
+<Accordion title="How to report a bug">
+  1. Check if the bug is already reported in [GitHub Issues](https://github.com/yourusername/opschat/issues)
+  2. Create a new issue with:
+     - Clear, descriptive title
+     - Steps to reproduce
+     - Expected behavior
+     - Actual behavior
+     - Screenshots (if applicable)
+     - Environment details (OS, Node version, etc.)
+</Accordion>
+
+### Feature Requests
+
+<Accordion title="Suggesting a new feature">
+  1. Open a GitHub Discussion or Issue
+  2. Describe the feature and its benefits
+  3. Provide use cases
+  4. Wait for maintainer feedback before implementing
+  
+  <Warning>
+    Large features should be discussed before coding to avoid wasted effort.
+  </Warning>
+</Accordion>
+
+### Documentation
+
+<Accordion title="Improving documentation">
+  - Fix typos and grammar
+  - Add missing examples
+  - Clarify confusing sections
+  - Update outdated information
+  
+  Documentation is in:
+  - `README.md` - Project overview
+  - `docs/` - Detailed documentation (this site!)
+  - Code comments - Inline explanations
+</Accordion>
+
+## Community Guidelines
+
+<CardGroup cols={2}>
+  <Card title="Be Respectful" icon="handshake">
+    Treat all contributors with respect. We have a zero-tolerance policy for harassment.
+  </Card>
+  
+  <Card title="Be Patient" icon="clock">
+    Maintainers are volunteers. Reviews may take time.
+  </Card>
+  
+  <Card title="Be Collaborative" icon="users">
+    Work together to solve problems. Share knowledge freely.
+  </Card>
+  
+  <Card title="Be Constructive" icon="comments">
+    Provide helpful feedback. Focus on the code, not the person.
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+If you need help with contributing:
+
+<CardGroup cols={3}>
+  <Card title="GitHub Discussions" icon="message">
+    Ask questions in the Discussions tab
+  </Card>
+  
+  <Card title="Discord/Slack" icon="discord">
+    Join our community chat (link in README)
+  </Card>
+  
+  <Card title="Stack Overflow" icon="stack-overflow">
+    Tag questions with `opschat`
+  </Card>
+</CardGroup>
+
+## Recognition
+
+All contributors will be:
+- Listed in the GitHub contributors page
+- Mentioned in release notes for significant contributions
+- Credited in the project README
+
+<Note>
+  Your contributions help make OpsChat better for everyone. Thank you!
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="wrench" href="/development/setup">
+    Get your local environment ready
+  </Card>
+  <Card title="Testing Guide" icon="flask" href="/development/testing">
+    Learn how to write and run tests
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Understand the data models
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/authentication">
+    Explore the API endpoints
+  </Card>
+</CardGroup>

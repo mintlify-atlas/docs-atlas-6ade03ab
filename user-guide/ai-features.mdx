@@ -1,0 +1,578 @@
+---
+title: 'AI Features'
+description: 'Translate messages, summarize conversations, and get smart reply suggestions'
+icon: 'wand-magic-sparkles'
+---
+
+## Overview
+
+OpsChat integrates powerful AI features powered by **Groq** to enhance your communication. Break language barriers, summarize long conversations, and respond faster with smart suggestions.
+
+<Info>
+  **Powered by Groq**: OpsChat uses Groq's ultra-fast LLM inference API with models like Llama 3.3 70B and Llama 3.1 8B.
+</Info>
+
+---
+
+## AI Translation
+
+Translate any message into your preferred language instantly. Perfect for multilingual teams and global collaboration.
+
+### How to Translate Messages
+
+<Steps>
+  <Step title="Select Your Language">
+    In the channel or DM header, click the **🌐 language selector** dropdown.
+    
+    Choose your preferred target language:
+    - **EN** - English
+    - **ES** - Spanish
+    - **FR** - French
+    - **DE** - German
+    - **HI** - Hindi
+    - **ZH** - Chinese
+    - **JA** - Japanese
+  </Step>
+  
+  <Step title="Click Translate on Any Message">
+    Below any text message, you'll see a **Translate** button.
+    
+    Click it to translate the message into your selected language.
+    
+    <Tip>
+      The translate button appears on all text messages, including your own.
+    </Tip>
+  </Step>
+  
+  <Step title="View Translation">
+    The translated text appears below the original message with a **🌐** icon:
+    
+    ```
+    Original: "Bonjour, comment ça va?"
+    🌐 Translation: "Hello, how are you?"
+    ```
+    
+    <Note>
+      Translations are cached locally and don't require re-translating if you revisit the message.
+    </Note>
+  </Step>
+</Steps>
+
+### Supported Languages
+
+<CardGroup cols={3}>
+  <Card title="English" icon="flag-usa">
+    EN - English (US/UK)
+  </Card>
+  
+  <Card title="Spanish" icon="flag">
+    ES - Español
+  </Card>
+  
+  <Card title="French" icon="flag">
+    FR - Français
+  </Card>
+  
+  <Card title="German" icon="flag">
+    DE - Deutsch
+  </Card>
+  
+  <Card title="Hindi" icon="flag">
+    HI - हिन्दी
+  </Card>
+  
+  <Card title="Chinese" icon="flag">
+    ZH - 中文
+  </Card>
+  
+  <Card title="Japanese" icon="flag">
+    JA - 日本語
+  </Card>
+</CardGroup>
+
+<Note>
+  Want more languages? Contact support to request additional language support.
+</Note>
+
+### Technical Details
+
+**Translation Engine:**
+- **Model**: Llama 3.1 8B Instant
+- **Provider**: Groq Cloud API
+- **Latency**: ~200-500ms per translation
+- **Accuracy**: High-quality translations using state-of-the-art LLM
+
+**API Endpoint:**
+```bash
+POST /api/ai/translate
+{
+  "text": "Hello, how are you?",
+  "lang": "Spanish"
+}
+```
+
+**Response:**
+```json
+{
+  "translation": "Hola, ¿cómo estás?"
+}
+```
+
+---
+
+## Conversation Summarization
+
+Get AI-generated summaries of long conversations to catch up quickly or extract key decisions.
+
+### How to Summarize Conversations
+
+<Steps>
+  <Step title="Open a Channel or DM">
+    Navigate to any channel or direct message with conversation history.
+  </Step>
+  
+  <Step title="Click the Sparkles Icon">
+    In the message input area, click the **✨ Sparkles** icon (AI button).
+    
+    <Info>
+      The AI button is located next to the microphone and send buttons.
+    </Info>
+  </Step>
+  
+  <Step title="AI Generates Summary">
+    OpsChat sends all visible messages to Groq's AI for summarization.
+    
+    You'll see a loading indicator: **"Analyzing conversation..."**
+    
+    <Note>
+      Summarization typically takes 1-3 seconds depending on conversation length.
+    </Note>
+  </Step>
+  
+  <Step title="View the Summary">
+    A summary card appears above the message input with:
+    - **AI Summary** header
+    - 2-3 concise sentences covering:
+      - Key discussion points
+      - Decisions made
+      - Action items
+      - Important updates
+    
+    Example:
+    ```
+    AI Summary:
+    The team discussed the Q4 launch timeline and agreed to 
+    move the release date to December 15th. Sarah will 
+    coordinate with marketing, and John will finalize the 
+    deployment scripts by Friday.
+    ```
+  </Step>
+  
+  <Step title="Close or Re-summarize">
+    Click the **×** button to close the summary.
+    
+    You can re-summarize at any time to get an updated summary with new messages.
+  </Step>
+</Steps>
+
+### What Gets Summarized?
+
+<Tabs>
+  <Tab title="Channels">
+    **All visible messages** in the channel are summarized, including:
+    - Last 50 messages loaded in the current view
+    - Messages from all members
+    - Text messages only (images/files are excluded)
+    
+    <Warning>
+      Voice notes and file content are not analyzed. Only text messages are summarized.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Direct Messages">
+    **Full conversation history** is summarized, including:
+    - Last 50 messages loaded in the current view
+    - Messages from both participants
+    - Text messages only (images/files are excluded)
+  </Tab>
+</Tabs>
+
+### Technical Details
+
+**Summarization Engine:**
+- **Model**: Llama 3.3 70B Versatile
+- **Provider**: Groq Cloud API
+- **Latency**: ~1-3 seconds per summary
+- **Output**: 2-3 concise sentences
+- **Temperature**: 0.5 (balanced creativity/accuracy)
+
+**API Endpoint:**
+```bash
+POST /api/ai/summarize
+{
+  "messages": [
+    "Alice: We need to finalize the Q4 launch date.",
+    "Bob: I suggest December 15th.",
+    "Alice: Sounds good, let's go with that."
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "summary": "The team discussed the Q4 launch timeline and agreed to move the release date to December 15th."
+}
+```
+
+---
+
+## Smart Reply Suggestions
+
+Get AI-powered reply suggestions to respond quickly and naturally.
+
+### How Smart Replies Work
+
+<Steps>
+  <Step title="Receive a Message">
+    When someone sends you a message in a channel or DM, OpsChat automatically analyzes it.
+  </Step>
+  
+  <Step title="AI Generates Suggestions">
+    Smart reply suggestions appear **above the message input** with:
+    - 3 short, natural response options
+    - 5-10 words each
+    - Contextually relevant to the conversation
+    
+    Example:
+    ```
+    💬 Last message: "Can you review the deployment script?"
+    
+    Smart Replies:
+    ✨ Sure, I'll check it now
+    ✨ Can you send the link?
+    ✨ I'll review it after lunch
+    ```
+  </Step>
+  
+  <Step title="Click to Use">
+    Click any suggestion to insert it into your message input.
+    
+    You can:
+    - Send it immediately
+    - Edit before sending
+    - Ignore and type your own reply
+  </Step>
+</Steps>
+
+### When Suggestions Appear
+
+<AccordionGroup>
+  <Accordion title="Smart Replies Show When...">
+    - A new message is received from **someone else** (not your own messages)
+    - The message contains **text** (not just images/files)
+    - You're viewing the active conversation
+    - The last 5 messages provide enough context
+  </Accordion>
+  
+  <Accordion title="Smart Replies Don't Show When...">
+    - **You** send the last message
+    - The message is an image, voice note, or file only
+    - The conversation is empty
+    - AI service is unavailable
+  </Accordion>
+</AccordionGroup>
+
+### Technical Details
+
+**Smart Reply Engine:**
+- **Model**: Llama 3.1 8B Instant
+- **Provider**: Groq Cloud API
+- **Context**: Last 5 messages
+- **Latency**: ~300-700ms per request
+- **Output**: 3 reply suggestions
+- **Temperature**: 0.6 (natural and varied)
+
+**API Endpoint:**
+```bash
+POST /api/ai/suggest-replies
+{
+  "context": [
+    "Alice: Can you review the deployment script?",
+    "Bob: Sure, I'll check it now.",
+    "Alice: Thanks! It's in the #dev-team channel."
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "suggestions": [
+    "Got it, checking now",
+    "I'll review it shortly",
+    "Can you send the link?"
+  ]
+}
+```
+
+---
+
+## AI Features in Action
+
+### Use Case: Multilingual Team
+
+<Steps>
+  <Step title="Scenario">
+    Your team has members in France, India, and the US. A French colleague sends:
+    
+    ```
+    "Le déploiement est prévu pour vendredi."
+    ```
+  </Step>
+  
+  <Step title="Translate to English">
+    Click **Translate** below the message:
+    
+    ```
+    🌐 The deployment is scheduled for Friday.
+    ```
+  </Step>
+  
+  <Step title="Use Smart Reply">
+    Smart replies appear in English:
+    
+    ```
+    ✨ Sounds good!
+    ✨ Thanks for the update
+    ✨ I'll be ready
+    ```
+  </Step>
+  
+  <Step title="Send Response">
+    Click a suggestion to respond instantly, breaking the language barrier.
+  </Step>
+</Steps>
+
+### Use Case: Catching Up on Conversations
+
+<Steps>
+  <Step title="Scenario">
+    You return from vacation to find 200+ messages in your team channel.
+  </Step>
+  
+  <Step title="Open the Channel">
+    Navigate to the busy channel and scroll to see recent messages.
+  </Step>
+  
+  <Step title="Click Summarize">
+    Click the **✨ Sparkles** icon to generate a summary.
+  </Step>
+  
+  <Step title="Read the Summary">
+    In 10 seconds, you're caught up:
+    
+    ```
+    AI Summary:
+    The team finalized the Q4 roadmap with three key priorities: 
+    mobile app launch, API v2 release, and infrastructure migration. 
+    Sarah is leading mobile, Bob is handling API work, and Alice will 
+    manage the migration. Next team meeting is Friday at 2pm.
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Privacy & Data Usage
+
+Understand how OpsChat handles your data when using AI features.
+
+<CardGroup cols={2}>
+  <Card title="Groq API Only" icon="cloud">
+    AI features send data to Groq's API for processing. No data is stored by Groq.
+  </Card>
+  
+  <Card title="No Training Data" icon="shield-check">
+    Your messages are **not used** to train AI models. Groq does not retain conversation data.
+  </Card>
+  
+  <Card title="Encrypted Transit" icon="lock">
+    All API requests to Groq are encrypted via HTTPS.
+  </Card>
+  
+  <Card title="No Third-Party Sharing" icon="user-shield">
+    OpsChat does not share your data with any third parties except Groq for AI processing.
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Sensitive Information**: Avoid using AI features on messages containing passwords, API keys, or highly confidential data.
+</Warning>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Translation fails or shows error">
+    **"Translation failed"** error:
+    
+    **Possible causes:**
+    - Groq API rate limit exceeded
+    - Network connectivity issue
+    - Groq service outage
+    
+    **Solutions:**
+    - Wait 30 seconds and try again
+    - Refresh the page
+    - Check your internet connection
+    - Contact support if issue persists
+  </Accordion>
+  
+  <Accordion title="Summary shows 'Failed to generate summary'">
+    **Common issues:**
+    - No messages in the conversation
+    - Groq API unavailable
+    - Request timeout
+    
+    **Solutions:**
+    - Ensure there are messages to summarize
+    - Try again in a few seconds
+    - Check the Groq status page: https://status.groq.com
+  </Accordion>
+  
+  <Accordion title="Smart replies not appearing">
+    **Why suggestions might not show:**
+    - You sent the last message (not someone else)
+    - The message is an image or file only
+    - Not enough conversation context (< 3 messages)
+    - AI is still loading (wait a few seconds)
+    
+    If smart replies never appear:
+    - Check browser console for errors (F12)
+    - Verify your network connection
+    - Contact support
+  </Accordion>
+  
+  <Accordion title="AI features slow or timing out">
+    If AI features take more than 5 seconds:
+    
+    **Possible causes:**
+    - High API load (Groq rate limiting)
+    - Slow network connection
+    - Large conversation (too many messages)
+    
+    **Solutions:**
+    - Be patient during peak times
+    - Check your internet speed
+    - For summarization, scroll to load fewer messages
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Translation for Key Messages">
+    Don't translate every message—focus on:
+    - Important decisions
+    - Action items
+    - Messages you don't understand
+    - Cross-language conversations
+    
+    This conserves API quota and keeps conversations flowing naturally.
+  </Accordion>
+  
+  <Accordion title="Summarize Long Conversations">
+    Use summarization when:
+    - Returning from time off
+    - Joining a new channel
+    - Catching up after meetings
+    - Extracting action items
+    
+    Avoid over-summarizing short conversations (< 10 messages).
+  </Accordion>
+  
+  <Accordion title="Customize Smart Replies">
+    Smart replies are starting points—feel free to:
+    - Click and edit before sending
+    - Add emojis or additional context
+    - Combine suggestions with your own thoughts
+    
+    Personalize replies to maintain your communication style.
+  </Accordion>
+  
+  <Accordion title="Respect Language Preferences">
+    If team members speak multiple languages:
+    - Ask about preferred language
+    - Use translation to understand, but respond in their language when possible
+    - Set your language selector to your primary language
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## API Reference
+
+Integrate AI features into your own applications using OpsChat's API.
+
+<CodeGroup>
+```bash Translation
+curl -X POST http://localhost:3000/api/ai/translate \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: 1" \
+  -d '{
+    "text": "Hello, how are you?",
+    "lang": "Spanish"
+  }'
+```
+
+```bash Summarization
+curl -X POST http://localhost:3000/api/ai/summarize \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: 1" \
+  -d '{
+    "messages": [
+      "Alice: We need to finalize the Q4 launch date.",
+      "Bob: I suggest December 15th.",
+      "Alice: Sounds good."
+    ]
+  }'
+```
+
+```bash Smart Replies
+curl -X POST http://localhost:3000/api/ai/suggest-replies \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: 1" \
+  -d '{
+    "context": [
+      "Alice: Can you review the deployment script?",
+      "Bob: Sure, checking now."
+    ]
+  }'
+```
+</CodeGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="File Uploads" icon="upload" href="/user-guide/file-uploads">
+    Upload images, voice notes, and files
+  </Card>
+  
+  <Card title="Channels" icon="hashtag" href="/user-guide/channels-workspaces">
+    Create and manage team channels
+  </Card>
+  
+  <Card title="Direct Messages" icon="comment" href="/user-guide/direct-messages">
+    Send private messages to team members
+  </Card>
+  
+  <Card title="API Documentation" icon="code" href="/api/ai-services">
+    Integrate OpsChat AI into your apps
+  </Card>
+</CardGroup>

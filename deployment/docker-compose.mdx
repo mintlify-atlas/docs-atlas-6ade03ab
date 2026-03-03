@@ -1,0 +1,397 @@
+---
+title: Docker Compose Deployment
+description: Deploy OpsChat using Docker Compose for local development and testing
+icon: docker
+---
+
+## Overview
+
+Docker Compose provides the simplest way to run OpsChat locally with all required services. This deployment method is ideal for:
+
+- Local development and testing
+- Quick demos and proof-of-concepts
+- Single-machine deployments
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Docker">
+    Ensure Docker and Docker Compose are installed on your system:
+    ```bash
+    docker --version
+    docker compose version
+    ```
+  </Step>
+
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/yourusername/opschat.git
+    cd opschat
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    Create a `.env` file in the root directory with your Groq API key:
+    ```bash
+    GROQ_API_KEY=your_groq_api_key_here
+    VITE_API_URL=http://localhost:3000
+    ```
+    
+    <Note>
+      Get your Groq API key from [console.groq.com](https://console.groq.com)
+    </Note>
+  </Step>
+</Steps>
+
+## Architecture
+
+The Docker Compose setup includes five main services:
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL" icon="database">
+    Primary database for storing users, channels, and messages
+  </Card>
+  <Card title="Redis" icon="bolt">
+    Cache and pub/sub for real-time messaging and Socket.io adapter
+  </Card>
+  <Card title="MinIO" icon="box">
+    S3-compatible object storage for file uploads and avatars
+  </Card>
+  <Card title="Backend API" icon="server">
+    Node.js/Express API with Socket.io for real-time communication
+  </Card>
+  <Card title="Frontend UI" icon="browser">
+    React application served via Nginx
+  </Card>
+</CardGroup>
+
+## Starting OpsChat
+
+<Steps>
+  <Step title="Build and Start Services">
+    ```bash
+    docker compose up --build
+    ```
+    
+    This will:
+    - Pull required Docker images
+    - Build the backend and frontend containers
+    - Start all services with dependency management
+    - Initialize the MinIO bucket automatically
+  </Step>
+
+  <Step title="Access the Application">
+    Once all services are running, access OpsChat at:
+    
+    - **Application**: http://localhost:8080
+    - **Backend API**: http://localhost:3000
+    - **MinIO Console**: http://localhost:9001
+    - **PostgreSQL**: localhost:5432
+    - **Redis**: localhost:6379
+  </Step>
+
+  <Step title="Create Your First Account">
+    Navigate to http://localhost:8080 and register a new account to start using OpsChat.
+  </Step>
+</Steps>
+
+## Service Configuration
+
+### PostgreSQL Database
+
+```yaml docker-compose.yml
+postgres:
+  image: postgres:15-alpine
+  container_name: opschat_db
+  environment:
+    POSTGRES_USER: admin
+    POSTGRES_PASSWORD: password123
+    POSTGRES_DB: opschat
+  ports:
+    - "5432:5432"
+  volumes:
+    - postgres_data:/var/lib/postgresql/data
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U admin -d opschat"]
+    interval: 5s
+    timeout: 5s
+    retries: 5
+```
+
+<Warning>
+  Change the default password in production environments!
+</Warning>
+
+### Redis Cache
+
+```yaml docker-compose.yml
+redis:
+  image: redis:alpine
+  container_name: opschat_redis
+  ports:
+    - "6379:6379"
+```
+
+Redis is used for:
+- Socket.io adapter for horizontal scaling
+- Real-time pub/sub messaging
+- Session caching
+
+### MinIO Object Storage
+
+```yaml docker-compose.yml
+minio:
+  image: minio/minio
+  container_name: opschat_storage
+  ports:
+    - "9000:9000"  # API
+    - "9001:9001"  # Web Console
+  environment:
+    MINIO_ROOT_USER: "admin"
+    MINIO_ROOT_PASSWORD: "password123"
+    MINIO_CORS_ALLOW_ORIGIN: "*"
+  command: server /data --console-address ":9001"
+  volumes:
+    - minio_data:/data
+```
+
+The `minio-init` service automatically:
+- Creates the `opschat-uploads` bucket
+- Sets download permissions
+- Configures CORS for browser access
+
+### Backend API
+
+```yaml docker-compose.yml
+backend:
+  build: ./opschat-backend
+  container_name: opschat_api
+  ports:
+    - "3000:3000"
+  environment:
+    DATABASE_URL: postgres://admin:password123@opschat_db:5432/opschat
+    REDIS_HOST: opschat_redis
+    REDIS_PORT: 6379
+    S3_ENDPOINT: http://minio:9000
+    S3_PUBLIC_URL: http://localhost:9000
+    S3_ACCESS_KEY: admin
+    S3_SECRET_KEY: password123
+    S3_BUCKET: opschat-uploads
+    S3_USE_SSL: "false"
+    PORT: 3000
+    CLIENT_URL: http://localhost:8080
+    JWT_SECRET: dev_secret_key_123
+    GROQ_API_KEY: ${GROQ_API_KEY}
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+    minio:
+      condition: service_started
+```
+
+### Frontend UI
+
+```yaml docker-compose.yml
+frontend:
+  build:
+    context: ./opschat-frontend
+    args:
+      VITE_API_URL: ${VITE_API_URL}
+  container_name: opschat_ui
+  ports:
+    - "8080:80"
+  depends_on:
+    - backend
+```
+
+## Managing the Application
+
+### Run in Background
+
+```bash
+# Start services in detached mode
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# View logs for specific service
+docker compose logs -f backend
+```
+
+### Stop Services
+
+```bash
+# Stop all services
+docker compose stop
+
+# Stop and remove containers (keeps data)
+docker compose down
+
+# Remove containers and volumes (deletes all data)
+docker compose down -v
+```
+
+### Restart Services
+
+```bash
+# Restart all services
+docker compose restart
+
+# Restart specific service
+docker compose restart backend
+```
+
+### View Service Status
+
+```bash
+# List running containers
+docker compose ps
+
+# View resource usage
+docker stats
+```
+
+## Data Persistence
+
+Docker volumes ensure your data persists between container restarts:
+
+```yaml
+volumes:
+  postgres_data:  # Database files
+  minio_data:     # Uploaded files
+```
+
+### Backup Data
+
+<CodeGroup>
+```bash PostgreSQL Backup
+# Export database
+docker exec opschat_db pg_dump -U admin opschat > backup.sql
+
+# Restore database
+docker exec -i opschat_db psql -U admin opschat < backup.sql
+```
+
+```bash MinIO Backup
+# Copy MinIO data
+docker cp opschat_storage:/data ./minio-backup
+
+# Restore MinIO data
+docker cp ./minio-backup opschat_storage:/data
+```
+</CodeGroup>
+
+### View Volume Location
+
+```bash
+# List volumes
+docker volume ls
+
+# Inspect volume
+docker volume inspect opschat_postgres_data
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Backend won't start - Database connection error">
+    Check if PostgreSQL is healthy:
+    ```bash
+    docker compose ps postgres
+    docker compose logs postgres
+    ```
+    
+    The backend depends on PostgreSQL's health check. Wait for the database to be ready.
+  </Accordion>
+
+  <Accordion title="MinIO bucket not initialized">
+    Check the minio-init service logs:
+    ```bash
+    docker compose logs minio-init
+    ```
+    
+    Manually run initialization if needed:
+    ```bash
+    docker compose up minio-init
+    ```
+  </Accordion>
+
+  <Accordion title="Port conflicts">
+    If ports are already in use, modify the port mappings in docker-compose.yml:
+    ```yaml
+    ports:
+      - "3001:3000"  # Map to different host port
+    ```
+  </Accordion>
+
+  <Accordion title="File upload errors">
+    Verify MinIO is accessible:
+    ```bash
+    curl http://localhost:9000/minio/health/live
+    ```
+    
+    Check CORS configuration:
+    ```bash
+    docker compose logs minio
+    ```
+  </Accordion>
+
+  <Accordion title="Real-time messaging not working">
+    Ensure Redis is running:
+    ```bash
+    docker compose ps redis
+    docker exec opschat_redis redis-cli ping
+    # Should return: PONG
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Considerations
+
+<Warning>
+  This Docker Compose setup is designed for development. For production:
+  - Use strong, unique passwords for all services
+  - Enable SSL/TLS for all connections
+  - Use managed database services when possible
+  - Implement proper backup strategies
+  - Configure resource limits
+  - Use secrets management instead of environment variables
+</Warning>
+
+### Security Hardening
+
+1. **Change default credentials** in docker-compose.yml
+2. **Use Docker secrets** for sensitive data
+3. **Enable SSL** for MinIO and PostgreSQL
+4. **Restrict CORS** to specific origins
+5. **Use environment-specific** JWT secrets
+
+### Resource Limits
+
+Add resource constraints to prevent a single service from consuming all system resources:
+
+```yaml docker-compose.yml
+backend:
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: 1G
+      reservations:
+        cpus: '0.5'
+        memory: 512M
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/deployment/configuration">
+    Learn about all environment variables and configuration options
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra" href="/deployment/kubernetes">
+    Deploy to Kubernetes for production-grade scalability
+  </Card>
+</CardGroup>

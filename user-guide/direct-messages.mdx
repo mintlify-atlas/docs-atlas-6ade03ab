@@ -1,0 +1,465 @@
+---
+title: 'Direct Messages'
+description: 'Send private 1-on-1 messages with friends and colleagues'
+icon: 'comment-dots'
+---
+
+## Overview
+
+Direct Messages (DMs) provide secure, private communication between two users. Unlike channels, DMs are always 1-on-1 and don't require invite codes.
+
+<Info>
+  **Friend-Based System**: You must send a friend request before you can DM someone.
+</Info>
+
+---
+
+## Friend Request Workflow
+
+Before you can message someone directly, you need to connect via a friend request.
+
+### Sending a Friend Request
+
+<Steps>
+  <Step title="Click the Add Person Button">
+    In the sidebar, click the **+** button or **Add Person** icon.
+    
+    A modal will appear asking for the recipient's username.
+  </Step>
+  
+  <Step title="Enter Their Username">
+    Type the exact username of the person you want to connect with.
+    
+    <Tip>
+      Usernames are case-sensitive and unique. Double-check for typos.
+    </Tip>
+    
+    Example:
+    ```
+    john_doe
+    ```
+  </Step>
+  
+  <Step title="Send the Request">
+    Click **Send Request** and the recipient will receive a notification.
+    
+    <Note>
+      The request status will show as **Pending** until they respond.
+    </Note>
+  </Step>
+  
+  <Step title="Wait for Acceptance">
+    The recipient will receive a real-time notification and can:
+    - **Accept**: You become friends and can DM each other
+    - **Reject**: The request is deleted
+  </Step>
+</Steps>
+
+### Receiving a Friend Request
+
+When someone sends you a friend request, you'll see:
+
+<Steps>
+  <Step title="Real-Time Notification">
+    A notification appears in your **Notifications Panel** (bell icon in the navbar).
+    
+    You'll see:
+    - The sender's username
+    - Their profile picture (if set)
+    - Accept/Reject buttons
+  </Step>
+  
+  <Step title="Review the Request">
+    Click on the notification to see the sender's profile:
+    - Username
+    - Name
+    - Status message
+    - Bio
+  </Step>
+  
+  <Step title="Accept or Reject">
+    <Tabs>
+      <Tab title="Accept">
+        Click **Accept** to add them as a friend.
+        
+        - They appear in your Friends list
+        - You can now DM each other
+        - Both users receive a confirmation notification
+      </Tab>
+      
+      <Tab title="Reject">
+        Click **Reject** to decline the request.
+        
+        - The request is deleted
+        - The sender is not notified
+        - They can send a new request later
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+<Warning>
+  **You cannot DM someone without being friends first.** This prevents spam and ensures both parties consent to the conversation.
+</Warning>
+
+---
+
+## Starting a Direct Message
+
+Once you're friends with someone, you can start a private conversation.
+
+<Steps>
+  <Step title="Open Your Friends List">
+    In the sidebar, navigate to the **Friends** section.
+    
+    You'll see all accepted friends with their:
+    - Profile picture
+    - Name or username
+    - Status message
+  </Step>
+  
+  <Step title="Click on a Friend">
+    Click on any friend to open the DM conversation.
+    
+    <Tip>
+      You can also click on a user's avatar in a channel to view their profile and start a DM.
+    </Tip>
+  </Step>
+  
+  <Step title="Send Your First Message">
+    Type your message in the input box and press **Enter**.
+    
+    Your message is:
+    - Delivered instantly via WebSocket
+    - Stored permanently in the database
+    - Visible only to you and the recipient
+  </Step>
+</Steps>
+
+---
+
+## DM vs Channel Messaging
+
+Understand the key differences between Direct Messages and Channel Messages.
+
+<Tabs>
+  <Tab title="Direct Messages">
+    **1-on-1 Private Conversations**
+    
+    | Feature | Direct Messages |
+    |---------|----------------|
+    | **Participants** | Always 2 users |
+    | **Privacy** | End-to-end private |
+    | **Access Control** | Friend request required |
+    | **Message History** | Full history loaded automatically |
+    | **File Sharing** | ✅ Images, voice notes, files |
+    | **AI Features** | ✅ Translation, smart replies |
+    | **Invite Codes** | ❌ Not needed |
+    | **Roles** | ❌ No roles (both users equal) |
+    
+    **Best For:**
+    - Private conversations
+    - 1-on-1 collaboration
+    - Personal topics
+    - Quick questions
+  </Tab>
+  
+  <Tab title="Channel Messages">
+    **Multi-User Team Channels**
+    
+    | Feature | Channels |
+    |---------|----------|
+    | **Participants** | 2+ users |
+    | **Privacy** | Invite-only |
+    | **Access Control** | Invite code required |
+    | **Message History** | Last 50 messages loaded |
+    | **File Sharing** | ✅ Images, voice notes, files |
+    | **AI Features** | ✅ Translation, summarization |
+    | **Invite Codes** | ✅ Required to join |
+    | **Roles** | ✅ Creator, Member |
+    
+    **Best For:**
+    - Team collaboration
+    - Project discussions
+    - Group announcements
+    - Multi-user coordination
+  </Tab>
+</Tabs>
+
+<Info>
+  Both DMs and channels use the same real-time WebSocket technology for instant message delivery.
+</Info>
+
+---
+
+## Message History
+
+OpsChat automatically loads your conversation history when you open a DM.
+
+### How It Works
+
+<Steps>
+  <Step title="Open a DM">
+    Click on a friend in your sidebar to open the conversation.
+  </Step>
+  
+  <Step title="History Loads Automatically">
+    The last **50 messages** are loaded from the database and displayed instantly.
+    
+    You'll see:
+    - Message content
+    - Sender's name and avatar
+    - Timestamp (HH:MM format)
+    - Message type (text, image, audio, file)
+  </Step>
+  
+  <Step title="Scroll for Older Messages">
+    Scroll up to see earlier messages in the conversation.
+    
+    <Note>
+      All messages are stored permanently unless you manually delete them (feature coming soon).
+    </Note>
+  </Step>
+</Steps>
+
+### Message Types in DMs
+
+<CardGroup cols={2}>
+  <Card title="Text Messages" icon="message">
+    Standard text messages with full Unicode support (emojis, special characters, etc.).
+  </Card>
+  
+  <Card title="Images" icon="image">
+    Photos and images uploaded from your device. Click to view full-size.
+  </Card>
+  
+  <Card title="Voice Notes" icon="microphone">
+    Audio recordings sent directly from your browser. Play inline.
+  </Card>
+  
+  <Card title="Files" icon="file">
+    Documents, PDFs, and other files. Click to download.
+  </Card>
+</CardGroup>
+
+---
+
+## Viewing User Profiles
+
+Click on any friend's avatar or username to view their full profile.
+
+<Steps>
+  <Step title="Click Avatar or Name">
+    In the DM conversation, click on the user's avatar (top of sidebar) or their name in a message.
+  </Step>
+  
+  <Step title="Profile Modal Opens">
+    You'll see their:
+    - **Profile Picture**: Avatar or colored placeholder
+    - **Name**: Full display name
+    - **Username**: Unique handle (e.g., `@john_doe`)
+    - **Status**: Short 1-line description (e.g., "DevOps Engineer")
+    - **Bio**: Longer description (up to 500 characters)
+  </Step>
+  
+  <Step title="Close Profile">
+    Click outside the modal or press **Escape** to close.
+  </Step>
+</Steps>
+
+<Tip>
+  Update your own profile by clicking your avatar in the navbar and selecting **Edit Profile**.
+</Tip>
+
+---
+
+## Real-Time Features
+
+DMs use the same real-time WebSocket technology as channels for instant communication.
+
+### Delivery Status
+
+<Steps>
+  <Step title="Message Sent">
+    When you send a message, it's immediately:
+    - Saved to the database
+    - Broadcast to the recipient
+    - Added to your chat history
+  </Step>
+  
+  <Step title="Instant Delivery">
+    If the recipient is online, they receive your message in **under 100ms**.
+    
+    <Info>
+      Check the **System Healthy** indicator in the header to verify your connection status.
+    </Info>
+  </Step>
+  
+  <Step title="Offline Messages">
+    If the recipient is offline:
+    - Messages are stored in the database
+    - They'll see them when they next log in
+    - Full history is preserved
+  </Step>
+</Steps>
+
+### Connection Status
+
+Monitor your WebSocket connection in the DM header:
+
+- **🟢 System Healthy**: Connected and receiving real-time updates
+- **🔴 Disconnected**: Connection lost, messages may be delayed
+
+<Warning>
+  If you see **Disconnected**, refresh the page to reconnect.
+</Warning>
+
+---
+
+## Privacy & Security
+
+OpsChat takes your privacy seriously with multiple security layers.
+
+<CardGroup cols={2}>
+  <Card title="Friend-Only Access" icon="user-lock">
+    You can only DM users who have accepted your friend request. This prevents unwanted messages.
+  </Card>
+  
+  <Card title="Database Encryption" icon="shield-halved">
+    All messages are stored in a secure PostgreSQL database with industry-standard encryption.
+  </Card>
+  
+  <Card title="No Public Profiles" icon="eye-slash">
+    User profiles are only visible to friends. Strangers cannot search for or view your information.
+  </Card>
+  
+  <Card title="Secure WebSocket" icon="lock">
+    Real-time messages are transmitted over secure WebSocket connections.
+  </Card>
+</CardGroup>
+
+---
+
+## Managing Friends
+
+### Viewing Your Friends List
+
+<Steps>
+  <Step title="Open the Sidebar">
+    Your friends list is always visible in the left sidebar under **Friends**.
+  </Step>
+  
+  <Step title="See Friend Details">
+    Each friend shows:
+    - Profile picture or colored avatar
+    - Name or username
+    - Status message (if set)
+  </Step>
+  
+  <Step title="Click to Open DM">
+    Click any friend to open your conversation.
+  </Step>
+</Steps>
+
+### Pending Requests
+
+Check the **Notifications Panel** (bell icon) to see:
+- **Received requests**: People who want to connect with you
+- **Sent requests**: People you've requested (awaiting response)
+
+<Note>
+  You cannot see the status of sent requests until the recipient responds.
+</Note>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use DMs for Private Topics">
+    Reserve DMs for:
+    - 1-on-1 discussions
+    - Sensitive information
+    - Personal conversations
+    - Quick questions that don't need group input
+    
+    Use channels for team-wide topics.
+  </Accordion>
+  
+  <Accordion title="Keep Your Profile Updated">
+    A complete profile helps friends recognize you:
+    - Add a profile picture
+    - Set a clear display name
+    - Write a status message (e.g., "DevOps @ Acme Corp")
+    - Add a bio describing your role or interests
+  </Accordion>
+  
+  <Accordion title="Respond to Friend Requests Promptly">
+    Check your notifications regularly to avoid missing connection requests from colleagues.
+  </Accordion>
+  
+  <Accordion title="Use AI Features">
+    Enable AI translation for multilingual conversations and use smart replies to respond quickly.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Can't send a friend request">
+    **"User not found"** error:
+    - Check the username spelling (case-sensitive)
+    - Ask the user to confirm their exact username
+    - Ensure they have completed profile setup
+    
+    **"Request already exists"** error:
+    - You've already sent a request to this user
+    - Check your pending requests in notifications
+    - Wait for them to accept or reject
+  </Accordion>
+  
+  <Accordion title="Friend request not received">
+    If someone says they sent you a request but you don't see it:
+    - Check the **Notifications Panel** (bell icon)
+    - Refresh the page to sync notifications
+    - Ask them to confirm your exact username
+  </Accordion>
+  
+  <Accordion title="Messages not appearing">
+    Check your connection status:
+    - Look for **System Healthy** in the header
+    - If disconnected, refresh the page
+    - Clear your browser cache if issues persist
+  </Accordion>
+  
+  <Accordion title="Can't see message history">
+    If your conversation appears empty:
+    - Ensure you accepted the friend request
+    - Check if you're viewing the correct user
+    - Refresh the page to reload history
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="File Uploads" icon="upload" href="/user-guide/file-uploads">
+    Share images, voice notes, and files in DMs
+  </Card>
+  
+  <Card title="AI Features" icon="sparkles" href="/user-guide/ai-features">
+    Use translation and smart replies in conversations
+  </Card>
+  
+  <Card title="Channels" icon="hashtag" href="/user-guide/channels-workspaces">
+    Create team channels for group collaboration
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/friends">
+    Friends and direct messages API
+  </Card>
+</CardGroup>

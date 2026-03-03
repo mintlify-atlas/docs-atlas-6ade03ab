@@ -1,0 +1,282 @@
+---
+title: 'System Architecture Overview'
+description: 'High-level architecture and component interactions in OpsChat'
+icon: 'sitemap'
+---
+
+## Introduction
+
+OpsChat is built on a modern, scalable architecture designed for real-time communication. The system follows a client-server model with WebSocket support for bidirectional communication, enabling instant message delivery and presence updates.
+
+<Note>
+The architecture is designed to support horizontal scaling with multiple backend instances using Redis as a pub/sub adapter.
+</Note>
+
+## High-Level Architecture
+
+```
+┌─────────────────┐
+│   React SPA     │
+│   (Frontend)    │
+└────────┬────────┘
+         │ HTTP/WebSocket
+         │
+┌────────▼────────┐
+│  NGINX Ingress  │  (Load Balancer + Session Affinity)
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+┌───▼──┐  ┌──▼───┐
+│ API  │  │ API  │  (Multiple Backend Instances)
+│ Node │  │ Node │
+└───┬──┘  └──┬───┘
+    │         │
+    └────┬────┘
+         │
+    ┌────┼────────┬─────────┐
+    │    │        │         │
+┌───▼┐ ┌─▼──┐ ┌──▼───┐ ┌──▼───┐
+│ DB │ │Redis│ │MinIO │ │ Groq │
+└────┘ └────┘ └──────┘ └──────┘
+```
+
+## Core Components
+
+<AccordionGroup>
+  <Accordion title="Frontend (React SPA)" icon="react">
+    - **Technology**: React 19, TypeScript, Vite
+    - **UI Framework**: Tailwind CSS
+    - **Real-time**: Socket.io-client
+    - **Routing**: React Router v7
+    - **Animations**: Framer Motion
+    
+    The frontend is a single-page application that communicates with the backend via REST APIs and WebSockets. It maintains persistent Socket.io connections for real-time message delivery.
+    
+    **Key Features**:
+    - Real-time message updates
+    - Direct messaging and channels
+    - File uploads with preview
+    - AI-powered chat assistance
+  </Accordion>
+
+  <Accordion title="Backend API (Node.js)" icon="server">
+    - **Runtime**: Node.js with Express
+    - **WebSocket**: Socket.io with Redis adapter
+    - **ORM**: Prisma
+    - **Authentication**: JWT with bcryptjs
+    
+    The backend is stateless and horizontally scalable. Multiple instances can run concurrently, coordinating through Redis pub/sub.
+    
+    **Entry Point**: `/home/daytona/workspace/source/opschat-backend/src/server.js:32`
+    
+    **Key Responsibilities**:
+    - RESTful API endpoints
+    - WebSocket connection management
+    - Authentication and authorization
+    - Message persistence
+    - File upload coordination
+  </Accordion>
+
+  <Accordion title="Database (PostgreSQL)" icon="database">
+    - **Type**: Relational database
+    - **ORM**: Prisma Client
+    - **Connection**: Connection pooling via Prisma
+    
+    PostgreSQL stores all persistent data including users, channels, messages, and relationships.
+    
+    **Schema Location**: `/home/daytona/workspace/source/opschat-backend/prisma/schema.prisma:1`
+    
+    **Core Models**:
+    - User (authentication, profiles)
+    - Channel (public/private channels)
+    - Message (channel messages with TTL support)
+    - DirectMessage (1-on-1 conversations)
+    - FriendRequest (friend relationships)
+    - Workspace (team organization)
+  </Accordion>
+
+  <Accordion title="Redis (Cache & Pub/Sub)" icon="bolt">
+    - **Purpose**: Socket.io adapter for multi-instance coordination
+    - **Configuration**: Pub/Sub client pair
+    
+    Redis enables horizontal scaling by broadcasting Socket.io events across all backend instances.
+    
+    **Implementation**: `/home/daytona/workspace/source/opschat-backend/src/config/redis.js:6`
+    
+    When a message is sent to one backend instance, Redis ensures all other instances receive the event and can forward it to their connected clients.
+  </Accordion>
+
+  <Accordion title="MinIO (Object Storage)" icon="folder-open">
+    - **Type**: S3-compatible object storage
+    - **Purpose**: File and image uploads
+    - **Access**: Pre-signed URLs for secure downloads
+    
+    MinIO stores user-uploaded files (avatars, attachments, images) outside the main database for better performance and scalability.
+    
+    **Configuration**: `/home/daytona/workspace/source/opschat-backend/src/config/s3.js:5`
+  </Accordion>
+
+  <Accordion title="Groq AI" icon="brain">
+    - **Type**: External API service
+    - **Purpose**: AI-powered chat assistance
+    - **Models**: Fast LLM inference
+    
+    Groq provides AI capabilities for the `/ai` chat feature, enabling users to interact with language models directly within channels.
+  </Accordion>
+</AccordionGroup>
+
+## Request Flow
+
+### REST API Request
+
+<Steps>
+  <Step title="Client sends HTTP request">
+    Frontend makes API call to `/api/*` endpoint
+  </Step>
+  
+  <Step title="Ingress routes to backend">
+    NGINX Ingress load balances to available backend pod
+  </Step>
+  
+  <Step title="Authentication middleware">
+    JWT token validated via `authMiddleware.js`
+  </Step>
+  
+  <Step title="Route handler processes request">
+    Express route controller handles business logic
+  </Step>
+  
+  <Step title="Database operations">
+    Prisma Client queries PostgreSQL
+  </Step>
+  
+  <Step title="Response returned">
+    JSON response sent back to client
+  </Step>
+</Steps>
+
+### WebSocket Message Flow
+
+<Steps>
+  <Step title="Client emits 'send_message' event">
+    Socket.io client sends message data via WebSocket
+  </Step>
+  
+  <Step title="Backend receives event">
+    Socket handler in `handlers.js:114` processes the message
+  </Step>
+  
+  <Step title="Message persisted to database">
+    Prisma saves message to PostgreSQL with metadata
+  </Step>
+  
+  <Step title="Event broadcast via Redis">
+    Socket.io emits 'receive_message' to room
+  </Step>
+  
+  <Step title="Redis distributes to all instances">
+    All backend pods receive the event through pub/sub
+  </Step>
+  
+  <Step title="All connected clients receive message">
+    Every client in the channel/DM receives real-time update
+  </Step>
+</Steps>
+
+## Database Schema Overview
+
+The database follows a relational model with clear entity relationships:
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    - User accounts with profiles
+    - Friend requests and relationships
+    - Workspace memberships
+    - Channel memberships
+  </Card>
+  
+  <Card title="Messaging" icon="message">
+    - Channel messages with TTL
+    - Direct messages (1-on-1)
+    - Message types (text, image, file)
+    - Author and timestamp metadata
+  </Card>
+  
+  <Card title="Organization" icon="building">
+    - Workspaces (teams)
+    - Channels (public/private)
+    - Invite codes
+    - Role-based access control
+  </Card>
+  
+  <Card title="Relationships" icon="link">
+    - User-to-User (friends)
+    - User-to-Channel (members)
+    - User-to-Workspace (members)
+    - Creator/Owner tracking
+  </Card>
+</CardGroup>
+
+<Info>
+All timestamps use PostgreSQL's `DateTime` type with automatic `@default(now())` for `createdAt` fields.
+</Info>
+
+## Socket.io with Redis Adapter
+
+The architecture supports multiple backend instances through Socket.io's Redis adapter:
+
+```javascript
+// server.js:48
+const io = new Server(server, {
+    adapter: createAdapter(pubClient, subClient)
+});
+```
+
+**How it works**:
+
+1. Each backend instance maintains its own Socket.io server
+2. Two Redis clients per instance (pub + sub)
+3. When a message is broadcast to a room:
+   - Socket.io publishes event to Redis
+   - Redis broadcasts to all subscribed instances
+   - Each instance delivers to its connected clients
+4. Session affinity ensures stable WebSocket connections
+
+<Warning>
+Without Redis adapter, each backend instance would only know about its own connected clients, breaking multi-instance deployments.
+</Warning>
+
+## Stateless Design
+
+The backend is designed to be stateless, enabling horizontal scaling:
+
+<CardGroup cols={2}>
+  <Card title="Session State" icon="key">
+    JWT tokens contain user identity - no server-side session storage required
+  </Card>
+  
+  <Card title="Connection State" icon="plug">
+    Socket.io connections tracked in-memory but coordinated via Redis
+  </Card>
+  
+  <Card title="Data State" icon="database">
+    All persistent data in PostgreSQL, accessible by any instance
+  </Card>
+  
+  <Card title="File State" icon="file">
+    Uploads stored in MinIO, accessible via pre-signed URLs
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Technology Stack" icon="layer-group" href="/architecture/tech-stack">
+    Learn about the specific technologies and why they were chosen
+  </Card>
+  
+  <Card title="Scaling Guide" icon="arrows-maximize" href="/architecture/scaling">
+    Understand horizontal scaling and production deployment
+  </Card>
+</CardGroup>

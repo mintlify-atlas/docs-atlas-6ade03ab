@@ -1,80 +1,349 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get OpsChat running in under 5 minutes'
 ---
 
-## Get started in three steps
+## Welcome!
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will get you from zero to your first chat message in under 5 minutes. We'll use Docker Compose for the simplest setup, then show you how to deploy to Kubernetes if you need production-grade infrastructure.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  **Prerequisites**: Docker and Docker Compose installed on your machine
 </Note>
+
+## Option 1: Docker Compose (Recommended for First-Time Users)
+
+Perfect for local development and testing. This will spin up all services with one command.
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/yourusername/opschat.git
+    cd opschat
+    ```
+  </Step>
+
+  <Step title="Set Up Environment Variables">
+    Create a `.env` file in the root directory:
+
+    ```bash .env
+    # Required: Get a free API key from https://console.groq.com
+    GROQ_API_KEY=your_groq_api_key_here
+
+    # Optional: Defaults work out of the box
+    VITE_API_URL=http://localhost:3000
+    ```
+
+    <Tip>
+      **Don't have a Groq API key?** Sign up for free at [console.groq.com](https://console.groq.com). The free tier is generous enough for testing.
+    </Tip>
+  </Step>
+
+  <Step title="Start All Services">
+    Run the following command to start OpsChat:
+
+    ```bash
+    docker-compose up
+    ```
+
+    This will start:
+    - PostgreSQL database (port 5432)
+    - Redis cache (port 6379)
+    - MinIO object storage (port 9000)
+    - Backend API (port 3000)
+    - Frontend UI (port 8080)
+
+    <Info>
+      First run will take 2-3 minutes to build images. Subsequent starts are much faster.
+    </Info>
+  </Step>
+
+  <Step title="Access OpsChat">
+    Open your browser and navigate to:
+
+    ```
+    http://localhost:8080
+    ```
+
+    You should see the OpsChat login/signup page!
+  </Step>
+
+  <Step title="Create Your First Account">
+    1. Click **Sign Up**
+    2. Choose a username and password
+    3. You're in! Try joining the `#general` channel
+  </Step>
+
+  <Step title="Send Your First Message">
+    - Type a message in the `#general` channel
+    - Try uploading an image
+    - Click the translate icon to translate a message
+    - Use the AI summarization button to summarize the conversation
+  </Step>
+</Steps>
+
+<Check>
+  **Success!** You now have OpsChat running locally with full AI features.
+</Check>
+
+---
+
+## Option 2: Kubernetes with KIND (Advanced)
+
+For users who want to test Kubernetes deployments locally or prepare for production.
+
+<Warning>
+  **Prerequisites**: Docker, kubectl, and KIND must be installed
+</Warning>
+
+<Steps>
+  <Step title="Ensure Prerequisites">
+    Install KIND (Kubernetes in Docker):
+
+    <CodeGroup>
+    ```bash macOS
+    brew install kind kubectl
+    ```
+
+    ```bash Linux
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+    chmod +x ./kind
+    sudo mv ./kind /usr/local/bin/kind
+    ```
+
+    ```bash Windows
+    choco install kind kubectl
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Clone and Configure">
+    ```bash
+    git clone https://github.com/yourusername/opschat.git
+    cd opschat
+    ```
+
+    Create a `.env` file:
+    ```bash .env
+    GROQ_API_KEY=your_groq_api_key_here
+    ```
+  </Step>
+
+  <Step title="One-Command Deployment">
+    Use the automated deployment script:
+
+    ```bash
+    chmod +x deploy.sh
+    ./deploy.sh
+    ```
+
+    This script will:
+    - Create a KIND cluster
+    - Install NGINX ingress controller
+    - Create Kubernetes secrets
+    - Build Docker images
+    - Load images into KIND
+    - Deploy all services
+
+    <Info>
+      The deployment takes about 3-5 minutes on the first run.
+    </Info>
+  </Step>
+
+  <Step title="Verify Deployment">
+    Check that all pods are running:
+
+    ```bash
+    kubectl get pods
+    ```
+
+    You should see:
+    ```
+    NAME                        READY   STATUS    RESTARTS   AGE
+    backend-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
+    backend-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
+    frontend-xxxxxxxxxx-xxxxx   1/1     Running   0          2m
+    postgres-xxxxxxxxxx-xxxxx   1/1     Running   0          2m
+    redis-xxxxxxxxxx-xxxxx      1/1     Running   0          2m
+    minio-xxxxxxxxxx-xxxxx      1/1     Running   0          2m
+    ```
+  </Step>
+
+  <Step title="Access the Application">
+    Open your browser to:
+
+    ```
+    http://localhost
+    ```
+
+    <Note>
+      Kubernetes uses port 80 (no port number needed in the URL)
+    </Note>
+  </Step>
+</Steps>
+
+### Manual Kubernetes Deployment
+
+If you prefer step-by-step control:
+
+<Accordion title="Show Manual Steps">
+  ```bash
+  # 1. Create KIND cluster
+  kind create cluster --config kind-config.yaml --name opschat-local
+
+  # 2. Install ingress controller
+  kubectl apply -f k8s/ingress-nginx.yaml
+  kubectl wait --namespace ingress-nginx \
+    --for=condition=ready pod \
+    --selector=app.kubernetes.io/component=controller \
+    --timeout=120s
+
+  # 3. Create secrets
+  kubectl create secret generic opschat-secrets \
+    --from-literal=GROQ_API_KEY=your_key_here
+
+  # 4. Build images
+  docker build -t opschat-backend:v1 ./opschat-backend
+  docker build -t opschat-frontend:v1 \
+    --build-arg VITE_API_URL=http://localhost \
+    ./opschat-frontend
+
+  # 5. Load into KIND
+  kind load docker-image opschat-backend:v1 --name opschat-local
+  kind load docker-image opschat-frontend:v1 --name opschat-local
+
+  # 6. Deploy all services
+  kubectl apply -f k8s/
+  ```
+</Accordion>
+
+---
+
+## Verify Your Installation
+
+<AccordionGroup>
+  <Accordion title="Check Backend Health" icon="server">
+    ```bash
+    curl http://localhost:3000/health
+    ```
+
+    Should return:
+    ```json
+    {
+      "status": "healthy",
+      "database": "connected",
+      "redis": "connected",
+      "storage": "connected"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Check Database Connection" icon="database">
+    Docker Compose:
+    ```bash
+    docker exec -it opschat_db psql -U admin -d opschat -c "\dt"
+    ```
+
+    Should show tables: `User`, `Channel`, `Message`, `DirectMessage`, `FriendRequest`
+  </Accordion>
+
+  <Accordion title="Check Redis" icon="memory">
+    ```bash
+    docker exec -it opschat_redis redis-cli ping
+    ```
+
+    Should return: `PONG`
+  </Accordion>
+
+  <Accordion title="Check MinIO Storage" icon="box">
+    Open MinIO console:
+    ```
+    http://localhost:9001
+    ```
+
+    Login: `admin` / `password123`
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Explore Features" icon="sparkles" href="/features">
+    Learn about channels, DMs, AI translation, and file uploads
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/authentication">
+    Integrate OpsChat with your existing tools
+  </Card>
+  <Card title="Deploy to Production" icon="cloud" href="/deployment/kubernetes">
+    Scale OpsChat to production with Kubernetes
+  </Card>
+  <Card title="Configuration" icon="gear" href="/deployment/configuration">
+    Customize environment variables and settings
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port Already in Use" icon="triangle-exclamation">
+    If you see `port is already allocated`, another service is using the port.
+
+    **Docker Compose:**
+    ```bash
+    # Find what's using port 8080
+    lsof -i :8080
+
+    # Stop the conflicting service or change ports in docker-compose.yml
+    ```
+  </Accordion>
+
+  <Accordion title="Database Connection Failed" icon="database">
+    ```bash
+    # Check if PostgreSQL is running
+    docker ps | grep postgres
+
+    # Check logs
+    docker logs opschat_db
+
+    # Restart services
+    docker-compose restart
+    ```
+  </Accordion>
+
+  <Accordion title="AI Features Not Working" icon="robot">
+    Verify your `GROQ_API_KEY` is set correctly:
+
+    ```bash
+    # Check if env var is loaded
+    docker exec opschat_api env | grep GROQ
+
+    # Should show: GROQ_API_KEY=gsk_...
+    ```
+
+    If not set, update `.env` and restart:
+    ```bash
+    docker-compose down
+    docker-compose up
+    ```
+  </Accordion>
+
+  <Accordion title="File Upload Fails" icon="file-arrow-up">
+    MinIO might not be initialized correctly:
+
+    ```bash
+    # Check MinIO logs
+    docker logs opschat_storage
+
+    # Recreate MinIO bucket
+    docker-compose restart minio-init
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  **Having issues?** Check the [Configuration Guide](/deployment/configuration) or open an issue on [GitHub](https://github.com/AdityaAryan-1408/OpsChat/issues).
+</Warning>

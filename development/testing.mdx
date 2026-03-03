@@ -1,0 +1,473 @@
+---
+title: Testing Guide
+description: Running tests and writing new test cases for OpsChat
+icon: flask
+---
+
+## Overview
+
+OpsChat uses **Jest** as the testing framework for the backend. Tests are located in the `__tests__` directory and cover routes, integration scenarios, and core functionality.
+
+<Info>
+  The frontend currently uses Vite's built-in testing capabilities. This guide focuses on backend testing.
+</Info>
+
+## Test Structure
+
+```
+opschat-backend/
+├── __tests__/
+│   ├── routes/              # Route/API endpoint tests
+│   │   ├── auth.test.js
+│   │   ├── ai.test.js
+│   │   ├── upload.test.js
+│   │   └── health.test.js
+│   └── integration/         # Integration tests
+│       ├── database.test.js
+│       └── socket.test.js
+├── tests/
+│   └── setup.js             # Test environment setup
+└── jest.config.js           # Jest configuration
+```
+
+## Running Tests
+
+### Quick Commands
+
+<CodeGroup>
+```bash Run All Tests
+npm test
+```
+
+```bash Watch Mode
+npm run test:watch
+```
+
+```bash Coverage Report
+npm run test:coverage
+```
+</CodeGroup>
+
+### Command Details
+
+<Tabs>
+  <Tab title="npm test">
+    Runs all tests in band (sequentially) with open handle detection:
+    
+    ```bash
+    jest --runInBand --detectOpenHandles
+    ```
+    
+    **Options:**
+    - `--runInBand`: Runs tests serially (prevents database conflicts)
+    - `--detectOpenHandles`: Warns about async operations preventing exit
+    
+    <Tip>
+      Use this for CI/CD pipelines and final validation.
+    </Tip>
+  </Tab>
+  
+  <Tab title="npm run test:watch">
+    Runs Jest in watch mode for active development:
+    
+    ```bash
+    jest --watch
+    ```
+    
+    Automatically re-runs tests when files change. Press `a` to run all tests, or `p` to filter by filename.
+    
+    <Tip>
+      Perfect for TDD (Test-Driven Development) workflow.
+    </Tip>
+  </Tab>
+  
+  <Tab title="npm run test:coverage">
+    Generates a comprehensive coverage report:
+    
+    ```bash
+    jest --coverage --runInBand --detectOpenHandles
+    ```
+    
+    Creates reports in:
+    - `coverage/lcov-report/index.html` (HTML report)
+    - `coverage/lcov.info` (LCOV format for CI tools)
+    - Terminal output (text summary)
+    
+    <Note>
+      The configuration excludes `src/server.js` from coverage.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Jest Configuration
+
+The `jest.config.js` file defines test behavior:
+
+```javascript
+module.exports = {
+    testEnvironment: 'node',
+    testMatch: ['**/__tests__/**/*.test.js'],
+    collectCoverageFrom: [
+        'src/**/*.js',
+        '!src/server.js'
+    ],
+    coverageDirectory: 'coverage',
+    coverageReporters: ['text', 'lcov', 'html'],
+    setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+    testTimeout: 10000,
+    verbose: true
+};
+```
+
+<AccordionGroup>
+  <Accordion title="Configuration Options Explained">
+    | Option | Value | Purpose |
+    |--------|-------|----------|
+    | `testEnvironment` | `node` | Use Node.js environment (not browser) |
+    | `testMatch` | `**/__tests__/**/*.test.js` | Only run files matching this pattern |
+    | `collectCoverageFrom` | `src/**/*.js` | Include all source files in coverage |
+    | `coverageDirectory` | `coverage` | Output directory for coverage reports |
+    | `setupFilesAfterEnv` | `tests/setup.js` | Run setup before each test file |
+    | `testTimeout` | `10000` | 10-second timeout per test (for async ops) |
+    | `verbose` | `true` | Show detailed test results |
+  </Accordion>
+</AccordionGroup>
+
+## Test Categories
+
+### Route Tests
+
+Located in `__tests__/routes/`, these test API endpoints using `supertest`.
+
+<CardGroup cols={2}>
+  <Card title="auth.test.js" icon="lock">
+    Tests authentication endpoints:
+    - User registration
+    - Login/logout
+    - JWT token validation
+    - Password hashing
+  </Card>
+  
+  <Card title="ai.test.js" icon="wand-magic-sparkles">
+    Tests AI features:
+    - Message translation
+    - Conversation summarization
+    - Smart reply generation
+    - Groq API integration
+  </Card>
+  
+  <Card title="upload.test.js" icon="cloud-arrow-up">
+    Tests file upload functionality:
+    - Image uploads to MinIO
+    - Voice note uploads
+    - File validation
+    - S3 presigned URLs
+  </Card>
+  
+  <Card title="health.test.js" icon="heart-pulse">
+    Tests health check endpoints:
+    - API availability
+    - Database connectivity
+    - Redis connection
+    - Service status
+  </Card>
+</CardGroup>
+
+### Integration Tests
+
+Located in `__tests__/integration/`, these test cross-component functionality.
+
+<Tabs>
+  <Tab title="database.test.js">
+    Tests database operations:
+    
+    ```javascript
+    describe('Database Integration', () => {
+      test('User creation and retrieval', async () => {
+        const user = await prisma.user.create({
+          data: { email: 'test@example.com', password: 'hashed' }
+        });
+        expect(user.id).toBeDefined();
+      });
+      
+      test('Workspace and channel relationships', async () => {
+        // Test cascade relationships
+      });
+    });
+    ```
+  </Tab>
+  
+  <Tab title="socket.test.js">
+    Tests Socket.io real-time features:
+    
+    ```javascript
+    describe('Socket.io Integration', () => {
+      test('Message broadcasting', async () => {
+        // Test real-time message delivery
+      });
+      
+      test('User presence', async () => {
+        // Test online/offline status
+      });
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Writing Tests
+
+### Basic Test Structure
+
+```javascript
+const request = require('supertest');
+const app = require('../src/app');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+
+describe('API Endpoint', () => {
+  beforeAll(async () => {
+    // Setup: Connect to test database
+  });
+  
+  afterAll(async () => {
+    // Cleanup: Close connections
+    await prisma.$disconnect();
+  });
+  
+  beforeEach(async () => {
+    // Reset state before each test
+  });
+  
+  test('should return 200 OK', async () => {
+    const response = await request(app).get('/api/health');
+    expect(response.status).toBe(200);
+  });
+});
+```
+
+### Testing Authenticated Routes
+
+```javascript
+test('should require authentication', async () => {
+  const response = await request(app)
+    .get('/api/channels')
+    .expect(401);
+});
+
+test('should access with valid token', async () => {
+  const token = 'valid_jwt_token';
+  const response = await request(app)
+    .get('/api/channels')
+    .set('Authorization', `Bearer ${token}`)
+    .expect(200);
+});
+```
+
+### Testing Database Operations
+
+```javascript
+test('should create a new user', async () => {
+  const userData = {
+    email: 'newuser@example.com',
+    password: await bcrypt.hash('password123', 10),
+    username: 'newuser'
+  };
+  
+  const user = await prisma.user.create({ data: userData });
+  
+  expect(user.id).toBeDefined();
+  expect(user.email).toBe(userData.email);
+  
+  // Cleanup
+  await prisma.user.delete({ where: { id: user.id } });
+});
+```
+
+### Testing Socket.io Events
+
+```javascript
+const io = require('socket.io-client');
+
+test('should emit message event', (done) => {
+  const socket = io('http://localhost:3000');
+  
+  socket.on('connect', () => {
+    socket.emit('send_message', {
+      channelId: 1,
+      content: 'Test message'
+    });
+  });
+  
+  socket.on('new_message', (message) => {
+    expect(message.content).toBe('Test message');
+    socket.disconnect();
+    done();
+  });
+});
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Isolate Tests" icon="vial">
+    Each test should be independent:
+    ```javascript
+    beforeEach(async () => {
+      await prisma.message.deleteMany();
+    });
+    ```
+  </Card>
+  
+  <Card title="Use Test Database" icon="database">
+    Set `DATABASE_URL` to a test database:
+    ```bash
+    DATABASE_URL=postgres://user:pass@localhost:5432/opschat_test
+    ```
+  </Card>
+  
+  <Card title="Mock External Services" icon="cube">
+    Mock Groq API, S3, etc.:
+    ```javascript
+    jest.mock('../src/services/groq');
+    ```
+  </Card>
+  
+  <Card title="Test Edge Cases" icon="triangle-exclamation">
+    Don't just test happy paths:
+    - Invalid inputs
+    - Missing fields
+    - Authorization failures
+    - Database errors
+  </Card>
+</CardGroup>
+
+## Code Coverage Goals
+
+<Steps>
+  <Step title="Aim for 80%+ coverage">
+    Focus on critical paths first:
+    - Authentication logic
+    - Data validation
+    - Business logic
+  </Step>
+  
+  <Step title="View coverage report">
+    ```bash
+    npm run test:coverage
+    open coverage/lcov-report/index.html
+    ```
+  </Step>
+  
+  <Step title="Identify gaps">
+    Look for:
+    - Uncovered branches
+    - Untested functions
+    - Missing error handling tests
+  </Step>
+</Steps>
+
+## Continuous Integration
+
+### GitHub Actions Example
+
+```yaml .github/workflows/test.yml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: |
+          cd opschat-backend
+          npm ci
+      
+      - name: Run tests
+        run: |
+          cd opschat-backend
+          npm run test:coverage
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Tests hang or timeout">
+    Increase timeout or check for unclosed connections:
+    
+    ```javascript
+    // In test file
+    jest.setTimeout(30000);
+    
+    // Always close connections
+    afterAll(async () => {
+      await prisma.$disconnect();
+      await redisClient.quit();
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Database conflicts">
+    Use `--runInBand` to run tests sequentially:
+    
+    ```bash
+    jest --runInBand
+    ```
+    
+    Or use transactions in tests:
+    
+    ```javascript
+    beforeEach(async () => {
+      await prisma.$executeRaw`BEGIN`;
+    });
+    
+    afterEach(async () => {
+      await prisma.$executeRaw`ROLLBACK`;
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Port already in use">
+    Tests may conflict with running dev server:
+    
+    ```bash
+    # Stop dev server before testing
+    docker-compose down
+    npm test
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing Guide" icon="code-pull-request" href="/development/contributing">
+    Learn about code style and PR process
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Understand the data models you're testing
+  </Card>
+</CardGroup>

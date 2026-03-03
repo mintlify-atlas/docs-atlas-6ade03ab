@@ -1,0 +1,136 @@
+---
+title: 'Welcome to OpsChat'
+description: 'A real-time chat platform with AI features, built for DevOps teams'
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="OpsChat Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="OpsChat Hero Dark"
+/>
+
+## Real-Time Chat + AI + DevOps-Ready
+
+OpsChat is a modern real-time chat platform that combines instant messaging with powerful AI capabilities, designed with DevOps teams in mind. Built with React, Node.js, Socket.io, and PostgreSQL, it's production-ready and scales horizontally with Kubernetes.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get from zero to your first message in under 5 minutes with Docker Compose
+  </Card>
+  <Card
+    title="Features"
+    icon="sparkles"
+    href="/features"
+  >
+    Explore channels, DMs, file uploads, AI translation, summarization, and more
+  </Card>
+  <Card
+    title="Deployment"
+    icon="server"
+    href="/deployment/kubernetes"
+  >
+    Deploy to Kubernetes with horizontal scaling and production-grade infrastructure
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/authentication"
+  >
+    Complete API documentation for integrations and custom features
+  </Card>
+</CardGroup>
+
+## Why OpsChat?
+
+<AccordionGroup>
+  <Accordion title="Real-Time Performance" icon="bolt">
+    Built on Socket.io with Redis pub/sub for instant message delivery across multiple server instances. Messages are delivered in milliseconds with automatic reconnection and presence tracking.
+  </Accordion>
+
+  <Accordion title="AI-Powered Communication" icon="brain">
+    Integrated Groq LLM provides:
+    - **Smart Translation**: Translate messages into 50+ languages
+    - **Conversation Summarization**: Generate concise summaries of long discussions
+    - **Smart Reply Suggestions**: AI-generated contextual responses
+  </Accordion>
+
+  <Accordion title="Production-Grade Stack" icon="layer-group">
+    - **Frontend**: React 19, TypeScript, Tailwind CSS, Vite
+    - **Backend**: Node.js, Express, Socket.io, Prisma ORM
+    - **Database**: PostgreSQL with connection pooling
+    - **Cache**: Redis for session management and pub/sub
+    - **Storage**: MinIO (S3-compatible) for file uploads
+    - **Orchestration**: Kubernetes-ready with horizontal scaling
+  </Accordion>
+
+  <Accordion title="DevOps-First Design" icon="truck">
+    - Docker Compose for local development
+    - Kubernetes manifests included
+    - Horizontal scaling with Redis adapter
+    - Health checks and graceful shutdown
+    - CI/CD ready with GitHub Actions
+  </Accordion>
+</AccordionGroup>
+
+## Quick Feature Highlights
+
+<CardGroup cols={3}>
+  <Card title="Channels & DMs" icon="comments">
+    Create public channels or send direct messages with real-time delivery
+  </Card>
+  <Card title="File Uploads" icon="file-arrow-up">
+    Share images and voice notes with S3-compatible storage
+  </Card>
+  <Card title="Friend System" icon="user-group">
+    Send and accept friend requests to build your network
+  </Card>
+  <Card title="AI Translation" icon="language">
+    Translate any message to your preferred language instantly
+  </Card>
+  <Card title="Message History" icon="clock-rotate-left">
+    Persistent storage with PostgreSQL, load last 50 messages on join
+  </Card>
+  <Card title="Horizontal Scaling" icon="arrow-up-right-dots">
+    Run multiple backend instances with Redis pub/sub synchronization
+  </Card>
+</CardGroup>
+
+## Tech Stack at a Glance
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS |
+| Backend | Node.js, Express, Socket.io, Prisma |
+| Database | PostgreSQL 15 |
+| Cache | Redis |
+| Storage | MinIO (S3-compatible) |
+| AI | Groq API (LLaMA 3.3) |
+| Container | Docker, Docker Compose |
+| Orchestration | Kubernetes (KIND for local) |
+
+<Note>
+  **Ready to get started?** Head to the [Quickstart Guide](/quickstart) to deploy OpsChat in under 5 minutes.
+</Note>
+
+## What's Next?
+
+<Steps>
+  <Step title="Deploy Locally">
+    Follow the [Quickstart](/quickstart) to run OpsChat with Docker Compose
+  </Step>
+  <Step title="Explore Features">
+    Check out the [Features](/features) page to learn about channels, AI tools, and file uploads
+  </Step>
+  <Step title="Go to Production">
+    Read the [Deployment Guide](/deployment/kubernetes) for Kubernetes setup and scaling
+  </Step>
+</Steps>

@@ -1,0 +1,641 @@
+---
+title: Configuration Reference
+description: Complete guide to environment variables and configuration options for OpsChat
+icon: gear
+---
+
+## Overview
+
+OpsChat uses environment variables for configuration across all deployment methods. This page documents every available configuration option.
+
+## Required Variables
+
+These variables must be set for OpsChat to function:
+
+<ParamField path="GROQ_API_KEY" type="string" required>
+  API key for Groq's LLM service. Used for AI-powered features.
+  
+  **How to obtain:**
+  1. Visit [console.groq.com](https://console.groq.com)
+  2. Sign up or log in
+  3. Navigate to API Keys section
+  4. Create a new API key
+  
+  **Example:**
+  ```bash
+  GROQ_API_KEY=gsk_abc123def456ghi789jkl012mno345pqr
+  ```
+  
+  <Warning>
+    Keep this key secret! Never commit it to version control.
+  </Warning>
+</ParamField>
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string in the standard format.
+  
+  **Format:**
+  ```
+  postgresql://[user]:[password]@[host]:[port]/[database]
+  ```
+  
+  **Examples:**
+  ```bash
+  # Docker Compose
+  DATABASE_URL=postgres://admin:password123@opschat_db:5432/opschat
+  
+  # Kubernetes
+  DATABASE_URL=postgresql://postgres:password@opschat-db:5432/opschat
+  
+  # Local development
+  DATABASE_URL=postgresql://admin:password123@localhost:5432/opschat
+  
+  # Managed database (AWS RDS)
+  DATABASE_URL=postgresql://admin:SecurePass123@opschat.abc123.us-east-1.rds.amazonaws.com:5432/opschat
+  ```
+  
+  <Note>
+    This is used by Prisma ORM. The schema is located at `opschat-backend/prisma/schema.prisma`
+  </Note>
+</ParamField>
+
+## Database Configuration
+
+<ParamField path="POSTGRES_USER" type="string" default="admin">
+  PostgreSQL username for the database.
+  
+  **Used in:** Docker Compose, Kubernetes manifests
+  
+  ```yaml
+  environment:
+    POSTGRES_USER: admin
+  ```
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" default="password123">
+  PostgreSQL password for the database user.
+  
+  <Warning>
+    Change this in production! Use strong, randomly generated passwords.
+  </Warning>
+  
+  **Production example:**
+  ```bash
+  POSTGRES_PASSWORD=$(openssl rand -base64 32)
+  ```
+</ParamField>
+
+<ParamField path="POSTGRES_DB" type="string" default="opschat">
+  Name of the PostgreSQL database to create/use.
+  
+  ```yaml
+  environment:
+    POSTGRES_DB: opschat
+  ```
+</ParamField>
+
+## Redis Configuration
+
+Redis is used for caching and as a pub/sub adapter for Socket.io to enable horizontal scaling.
+
+<ParamField path="REDIS_HOST" type="string" default="localhost">
+  Hostname or IP address of the Redis server.
+  
+  **Examples:**
+  ```bash
+  # Docker Compose
+  REDIS_HOST=opschat_redis
+  
+  # Kubernetes
+  REDIS_HOST=opschat-redis
+  
+  # Local development
+  REDIS_HOST=localhost
+  
+  # Managed Redis (AWS ElastiCache)
+  REDIS_HOST=opschat.abc123.0001.use1.cache.amazonaws.com
+  ```
+</ParamField>
+
+<ParamField path="REDIS_PORT" type="number" default="6379">
+  Port number for Redis connection.
+  
+  ```bash
+  REDIS_PORT=6379
+  ```
+</ParamField>
+
+<ParamField path="REDIS_URL" type="string">
+  Full Redis connection URL. If provided, overrides `REDIS_HOST` and `REDIS_PORT`.
+  
+  **Format:**
+  ```
+  redis://[username]:[password]@[host]:[port]/[database]
+  ```
+  
+  **Examples:**
+  ```bash
+  # No authentication
+  REDIS_URL=redis://localhost:6379
+  
+  # With authentication
+  REDIS_URL=redis://:password123@redis-host:6379
+  
+  # With username and password
+  REDIS_URL=redis://user:password@redis-host:6379/0
+  
+  # TLS connection
+  REDIS_URL=rediss://user:password@redis-host:6380
+  ```
+</ParamField>
+
+## Object Storage (S3/MinIO)
+
+OpsChat uses S3-compatible storage for file uploads, avatars, and attachments.
+
+<ParamField path="S3_ENDPOINT" type="string" default="http://127.0.0.1:9000">
+  Internal S3/MinIO endpoint URL for server-side operations.
+  
+  **Examples:**
+  ```bash
+  # Docker Compose (internal)
+  S3_ENDPOINT=http://minio:9000
+  
+  # Kubernetes (internal)
+  S3_ENDPOINT=http://opschat-minio:9000
+  
+  # AWS S3
+  S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+  
+  # MinIO (production)
+  S3_ENDPOINT=https://minio.example.com
+  ```
+  
+  <Note>
+    This is the endpoint the backend uses to upload files.
+  </Note>
+</ParamField>
+
+<ParamField path="S3_PUBLIC_URL" type="string">
+  Externally accessible S3/MinIO URL for generating presigned URLs.
+  
+  This URL is used when generating download links that browsers can access.
+  
+  **Examples:**
+  ```bash
+  # Docker Compose
+  S3_PUBLIC_URL=http://localhost:9000
+  
+  # Kubernetes with ingress
+  S3_PUBLIC_URL=http://minio.localhost
+  
+  # Production with CDN
+  S3_PUBLIC_URL=https://cdn.example.com
+  
+  # AWS S3 (regional)
+  S3_PUBLIC_URL=https://s3.us-east-1.amazonaws.com
+  ```
+  
+  <Warning>
+    If not set, falls back to `S3_ENDPOINT`. Ensure this URL is accessible from user browsers.
+  </Warning>
+</ParamField>
+
+<ParamField path="S3_ACCESS_KEY" type="string" default="admin">
+  S3/MinIO access key ID for authentication.
+  
+  **Examples:**
+  ```bash
+  # MinIO (development)
+  S3_ACCESS_KEY=admin
+  
+  # AWS IAM credentials
+  S3_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+  ```
+</ParamField>
+
+<ParamField path="S3_SECRET_KEY" type="string" default="password123">
+  S3/MinIO secret access key for authentication.
+  
+  <Warning>
+    Change this in production! Never expose in logs or client-side code.
+  </Warning>
+  
+  **Examples:**
+  ```bash
+  # MinIO (development)
+  S3_SECRET_KEY=password123
+  
+  # AWS IAM credentials
+  S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  ```
+</ParamField>
+
+<ParamField path="S3_BUCKET" type="string" default="opschat-uploads">
+  Name of the S3 bucket for storing files.
+  
+  ```bash
+  S3_BUCKET=opschat-uploads
+  ```
+  
+  <Note>
+    The bucket is automatically created on startup if it doesn't exist (for MinIO).
+  </Note>
+</ParamField>
+
+<ParamField path="S3_REGION" type="string" default="us-east-1">
+  AWS region for S3 operations.
+  
+  **Examples:**
+  ```bash
+  # AWS regions
+  S3_REGION=us-east-1
+  S3_REGION=eu-west-1
+  S3_REGION=ap-southeast-1
+  
+  # MinIO (can be any value)
+  S3_REGION=us-east-1
+  ```
+</ParamField>
+
+<ParamField path="S3_USE_SSL" type="boolean" default="false">
+  Whether to use SSL/TLS for S3 connections.
+  
+  ```bash
+  # Local MinIO without SSL
+  S3_USE_SSL=false
+  
+  # Production with SSL
+  S3_USE_SSL=true
+  ```
+</ParamField>
+
+## MinIO-Specific Configuration
+
+These variables are used when running MinIO as a container:
+
+<ParamField path="MINIO_ROOT_USER" type="string" default="admin">
+  MinIO root username.
+  
+  ```yaml
+  environment:
+    MINIO_ROOT_USER: admin
+  ```
+</ParamField>
+
+<ParamField path="MINIO_ROOT_PASSWORD" type="string" default="password123">
+  MinIO root password.
+  
+  <Warning>
+    Must be at least 8 characters. Use strong passwords in production.
+  </Warning>
+  
+  ```yaml
+  environment:
+    MINIO_ROOT_PASSWORD: password123
+  ```
+</ParamField>
+
+<ParamField path="MINIO_CORS_ALLOW_ORIGIN" type="string" default="*">
+  CORS origin for MinIO browser access.
+  
+  **Examples:**
+  ```bash
+  # Development (allow all)
+  MINIO_CORS_ALLOW_ORIGIN=*
+  
+  # Production (specific domain)
+  MINIO_CORS_ALLOW_ORIGIN=https://opschat.example.com
+  ```
+</ParamField>
+
+## Application Configuration
+
+<ParamField path="PORT" type="number" default="3000">
+  Port number for the backend API server.
+  
+  ```bash
+  PORT=3000
+  ```
+</ParamField>
+
+<ParamField path="CLIENT_URL" type="string" default="http://localhost:5173">
+  URL of the frontend application for CORS configuration.
+  
+  **Examples:**
+  ```bash
+  # Local development (Vite dev server)
+  CLIENT_URL=http://localhost:5173
+  
+  # Docker Compose
+  CLIENT_URL=http://localhost:8080
+  
+  # Kubernetes
+  CLIENT_URL=http://localhost
+  
+  # Production
+  CLIENT_URL=https://opschat.example.com
+  ```
+  
+  <Note>
+    Multiple origins are automatically supported for localhost. See backend CORS configuration for details.
+  </Note>
+</ParamField>
+
+<ParamField path="JWT_SECRET" type="string" default="dev_secret_key_123">
+  Secret key for JWT token signing and verification.
+  
+  <Warning>
+    This is currently a placeholder. The authentication system uses a simplified `x-user-id` header approach. For production, implement proper JWT authentication.
+  </Warning>
+  
+  **Production recommendation:**
+  ```bash
+  JWT_SECRET=$(openssl rand -base64 64)
+  ```
+</ParamField>
+
+## Frontend Configuration
+
+<ParamField path="VITE_API_URL" type="string" default="http://localhost:3000">
+  Backend API URL used by the frontend application.
+  
+  This is a **build-time** variable for Vite.
+  
+  **Examples:**
+  ```bash
+  # Local development
+  VITE_API_URL=http://localhost:3000
+  
+  # Docker Compose
+  VITE_API_URL=http://localhost:3000
+  
+  # Kubernetes
+  VITE_API_URL=http://localhost
+  
+  # Production
+  VITE_API_URL=https://api.opschat.example.com
+  ```
+  
+  <Note>
+    When building the frontend Docker image, pass this as a build argument:
+    ```bash
+    docker build --build-arg VITE_API_URL=http://localhost ./opschat-frontend
+    ```
+  </Note>
+</ParamField>
+
+## Example Configurations
+
+### Docker Compose (.env)
+
+```bash .env
+# API Keys
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Frontend
+VITE_API_URL=http://localhost:3000
+
+# Backend (set in docker-compose.yml)
+# DATABASE_URL=postgres://admin:password123@opschat_db:5432/opschat
+# REDIS_HOST=opschat_redis
+# S3_ENDPOINT=http://minio:9000
+```
+
+### Kubernetes Secret
+
+```bash
+# Create from .env file
+kubectl create secret generic opschat-secrets \
+  --from-literal=GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Verify secret
+kubectl get secret opschat-secrets -o yaml
+```
+
+### Local Development (.env)
+
+```bash .env
+# API Keys
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Database
+DATABASE_URL=postgresql://admin:password123@localhost:5432/opschat
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# MinIO/S3
+S3_ENDPOINT=http://localhost:9000
+S3_PUBLIC_URL=http://localhost:9000
+S3_ACCESS_KEY=admin
+S3_SECRET_KEY=password123
+S3_BUCKET=opschat-uploads
+S3_USE_SSL=false
+
+# Application
+PORT=3000
+CLIENT_URL=http://localhost:5173
+JWT_SECRET=dev_secret_key_123
+
+# Frontend
+VITE_API_URL=http://localhost:3000
+```
+
+### Production (AWS)
+
+```bash .env
+# API Keys
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Database (RDS)
+DATABASE_URL=postgresql://admin:SecurePassword123@opschat.abc123.us-east-1.rds.amazonaws.com:5432/opschat
+
+# Redis (ElastiCache)
+REDIS_URL=rediss://opschat.abc123.0001.use1.cache.amazonaws.com:6380
+
+# S3
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+S3_PUBLIC_URL=https://d1234567890abc.cloudfront.net
+S3_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+S3_BUCKET=opschat-production-uploads
+S3_REGION=us-east-1
+S3_USE_SSL=true
+
+# Application
+PORT=3000
+CLIENT_URL=https://opschat.example.com
+JWT_SECRET=<64-character-random-string>
+
+# Frontend (build-time)
+VITE_API_URL=https://api.opschat.example.com
+```
+
+## Security Best Practices
+
+<Warning>
+  Follow these guidelines to secure your OpsChat deployment:
+</Warning>
+
+### 1. Use Strong Secrets
+
+```bash
+# Generate secure passwords
+openssl rand -base64 32
+
+# Generate JWT secret
+openssl rand -base64 64
+```
+
+### 2. Use Secret Management
+
+Don't store secrets in `.env` files in production:
+
+<CodeGroup>
+```bash Kubernetes Secrets
+# From file
+kubectl create secret generic opschat-secrets --from-env-file=.env
+
+# Individual values
+kubectl create secret generic opschat-secrets \
+  --from-literal=GROQ_API_KEY=your_key \
+  --from-literal=JWT_SECRET=your_secret
+```
+
+```bash AWS Secrets Manager
+# Store secret
+aws secretsmanager create-secret \
+  --name opschat/groq-api-key \
+  --secret-string "gsk_your_key_here"
+
+# Retrieve in application
+aws secretsmanager get-secret-value \
+  --secret-id opschat/groq-api-key \
+  --query SecretString \
+  --output text
+```
+
+```bash Docker Secrets
+# Create secret file
+echo "gsk_your_key_here" | docker secret create groq_api_key -
+
+# Use in docker-compose.yml
+secrets:
+  groq_api_key:
+    external: true
+
+services:
+  backend:
+    secrets:
+      - groq_api_key
+```
+</CodeGroup>
+
+### 3. Restrict CORS
+
+In production, limit CORS to your specific domain:
+
+```javascript
+// server.js
+const allowedOrigins = [
+  'https://opschat.example.com',
+  'https://www.opschat.example.com'
+];
+```
+
+### 4. Enable SSL/TLS
+
+Always use HTTPS in production:
+- Enable TLS for PostgreSQL connections
+- Use `rediss://` for Redis connections
+- Set `S3_USE_SSL=true` for S3
+- Configure ingress with TLS certificates
+
+### 5. Rotate Credentials Regularly
+
+Set up a credential rotation schedule:
+- API keys: Every 90 days
+- Database passwords: Every 90 days
+- JWT secrets: Every 180 days
+
+## Validation
+
+Verify your configuration is working:
+
+```bash
+# Test database connection
+docker exec opschat_api node -e "require('./src/config/database'); console.log('DB connected');"
+
+# Test Redis connection
+docker exec opschat_redis redis-cli ping
+
+# Test MinIO connection
+curl http://localhost:9000/minio/health/live
+
+# Check backend health
+curl http://localhost:3000/health
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="DATABASE_URL connection error">
+    Verify:
+    - PostgreSQL is running and accessible
+    - Credentials are correct
+    - Host/port are reachable
+    - Database name exists
+    
+    ```bash
+    # Test connection
+    psql $DATABASE_URL -c "SELECT version();"
+    ```
+  </Accordion>
+
+  <Accordion title="GROQ_API_KEY invalid or missing">
+    Check:
+    - Key is correctly copied from Groq console
+    - No extra spaces or newlines
+    - Secret is properly mounted in Kubernetes
+    
+    ```bash
+    # Verify secret in Kubernetes
+    kubectl get secret opschat-secrets -o jsonpath='{.data.GROQ_API_KEY}' | base64 -d
+    ```
+  </Accordion>
+
+  <Accordion title="S3/MinIO upload errors">
+    Verify:
+    - MinIO is running and accessible
+    - Credentials match
+    - Bucket exists and is accessible
+    - CORS is configured correctly
+    
+    ```bash
+    # Test MinIO with mc client
+    mc alias set local http://localhost:9000 admin password123
+    mc ls local/opschat-uploads
+    ```
+  </Accordion>
+
+  <Accordion title="CORS errors in browser">
+    Check:
+    - `CLIENT_URL` matches your frontend URL
+    - Backend CORS configuration includes your origin
+    - Ingress annotations allow CORS
+    - No conflicting CORS headers
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Compose" icon="docker" href="/deployment/docker-compose">
+    Deploy with Docker Compose
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra" href="/deployment/kubernetes">
+    Deploy to Kubernetes
+  </Card>
+</CardGroup>

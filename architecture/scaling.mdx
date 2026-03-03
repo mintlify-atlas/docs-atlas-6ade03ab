@@ -1,0 +1,743 @@
+---
+title: 'Horizontal Scaling'
+description: 'Production deployment and horizontal scaling strategies'
+icon: 'arrows-maximize'
+---
+
+## Overview
+
+OpsChat is designed from the ground up to scale horizontally, allowing you to add more backend instances to handle increased load. The architecture leverages Kubernetes for orchestration and Redis for cross-instance coordination.
+
+<Note>
+Horizontal scaling (adding more instances) is preferred over vertical scaling (bigger machines) for better availability and cost efficiency.
+</Note>
+
+## Stateless Backend Design
+
+The backend is completely stateless, which is crucial for horizontal scaling:
+
+<CardGroup cols={2}>
+  <Card title="No Session Storage" icon="ban">
+    JWT tokens eliminate server-side session storage
+  </Card>
+  
+  <Card title="Shared Database" icon="database">
+    All instances read/write to the same PostgreSQL
+  </Card>
+  
+  <Card title="Shared Storage" icon="folder-open">
+    MinIO accessible by all backend instances
+  </Card>
+  
+  <Card title="Coordinated WebSockets" icon="signal-stream">
+    Redis pub/sub synchronizes Socket.io events
+  </Card>
+</CardGroup>
+
+### What Makes It Stateless?
+
+<AccordionGroup>
+  <Accordion title="Authentication" icon="key">
+    **Traditional (Stateful)**:
+    - Server stores session in memory/database
+    - Session tied to specific server instance
+    - Load balancer must use sticky sessions
+    
+    **OpsChat (Stateless)**:
+    - JWT contains all user information
+    - Any instance can validate any token
+    - No server-side session lookup required
+    
+    ```javascript
+    // authMiddleware.js - can run on any instance
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId; // No session lookup!
+    ```
+  </Accordion>
+
+  <Accordion title="Data Persistence" icon="floppy-disk">
+    **Problem**: Can't store data locally on each instance
+    
+    **Solution**: Centralized PostgreSQL
+    - All instances connect to same database
+    - Prisma handles connection pooling
+    - No instance-local data storage
+    
+    ```javascript
+    // Any instance can access any data
+    const message = await prisma.message.findUnique({
+        where: { id: messageId }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="File Uploads" icon="upload">
+    **Problem**: Files uploaded to one instance aren't on others
+    
+    **Solution**: Centralized MinIO storage
+    - All instances upload to same MinIO server
+    - Pre-signed URLs work from any instance
+    - No local file storage on backend pods
+    
+    ```javascript
+    // s3.js:5 - shared S3 client configuration
+    const s3Client = new S3Client({
+        endpoint: process.env.S3_ENDPOINT, // Shared MinIO
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="WebSocket Coordination" icon="arrows-split-up-and-left">
+    **Problem**: User A on Instance 1 can't message User B on Instance 2
+    
+    **Solution**: Redis pub/sub adapter
+    - Socket.io publishes events to Redis
+    - Redis broadcasts to all instances
+    - All connected clients receive messages
+    
+    ```javascript
+    // server.js:48 - Redis adapter
+    const io = new Server(server, {
+        adapter: createAdapter(pubClient, subClient)
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Redis Adapter for Socket.io
+
+The Redis adapter is the critical component that enables multi-instance Socket.io:
+
+### How It Works
+
+```
+Client A ──┐                    ┌── Client C
+           │                    │
+       Instance 1            Instance 2
+           │                    │
+           └────► Redis ◄───────┘
+                 Pub/Sub
+```
+
+<Steps>
+  <Step title="Client sends message">
+    Client A (connected to Instance 1) sends a message to a channel
+  </Step>
+  
+  <Step title="Instance saves to database">
+    Instance 1 persists the message to PostgreSQL
+  </Step>
+  
+  <Step title="Instance emits to room">
+    Instance 1 calls `io.to(room).emit('receive_message', data)`
+  </Step>
+  
+  <Step title="Redis publishes event">
+    Socket.io adapter publishes event to Redis pub/sub channel
+  </Step>
+  
+  <Step title="All instances receive event">
+    Redis broadcasts to Instance 1, Instance 2, ..., Instance N
+  </Step>
+  
+  <Step title="Clients receive message">
+    Each instance forwards the message to its connected clients in that room
+  </Step>
+</Steps>
+
+### Redis Configuration
+
+**Implementation**: `/home/daytona/workspace/source/opschat-backend/src/config/redis.js:6`
+
+```javascript
+const pubClient = createClient({ url: redisUrl });
+const subClient = pubClient.duplicate();
+
+// Two clients required:
+// - pubClient: Publishes events to Redis
+// - subClient: Subscribes to events from Redis
+```
+
+<Warning>
+**Critical**: Each backend instance needs TWO Redis connections (pub + sub). Don't share connections between instances.
+</Warning>
+
+### Without Redis Adapter
+
+Without Redis, Socket.io only knows about locally connected clients:
+
+```
+Client A ───► Instance 1  (knows about Client A only)
+
+Client B ───► Instance 2  (knows about Client B only)
+```
+
+Result: Client A and Client B can't communicate in real-time!
+
+## Kubernetes Deployment
+
+OpsChat uses Kubernetes for production deployment with multiple replicas:
+
+### Backend Deployment Configuration
+
+**File**: `/home/daytona/workspace/source/k8s/backend.yaml:1`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2  # Run 2 instances by default
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    spec:
+      containers:
+        - name: backend
+          image: opschat-backend:v1
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://..."
+            - name: REDIS_HOST
+              value: "opschat-redis"
+```
+
+<Card title="Key Configuration" icon="gear">
+  - **replicas: 2** - Run 2 backend pods
+  - **selector** - Label-based pod selection
+  - **env** - Shared environment variables
+  - **DATABASE_URL** - Same database for all instances
+  - **REDIS_HOST** - Shared Redis for coordination
+</Card>
+
+### Scaling Commands
+
+<CodeGroup>
+```bash Scale to 5 replicas
+kubectl scale deployment backend --replicas=5
+```
+
+```bash Auto-scale based on CPU
+kubectl autoscale deployment backend \
+  --min=2 --max=10 --cpu-percent=70
+```
+
+```bash Check replica status
+kubectl get pods -l app=backend
+```
+</CodeGroup>
+
+## Load Balancing with Ingress
+
+### Session Affinity for WebSockets
+
+**File**: `/home/daytona/workspace/source/k8s/ingress-backend.yaml:6`
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opschat-ingress-api
+  annotations:
+    # Session Affinity - CRITICAL for WebSockets
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+    
+    # WebSocket timeouts
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+```
+
+<Info>
+**Session Affinity Explained**: Once a client connects to Instance 1, the ingress controller ensures all subsequent requests from that client go to Instance 1. This keeps the WebSocket connection stable.
+</Info>
+
+### Why Session Affinity?
+
+WebSocket connections are long-lived and stateful:
+
+<Tabs>
+  <Tab title="Without Affinity">
+    ```
+    Client establishes WebSocket ──► Instance 1
+    
+    Next packet from client ──► Instance 2 (different instance!)
+    
+    Result: Connection lost, client must reconnect
+    ```
+    
+    <Warning>
+    Without session affinity, load balancer might route WebSocket packets to different instances, breaking the connection.
+    </Warning>
+  </Tab>
+  
+  <Tab title="With Affinity">
+    ```
+    Client establishes WebSocket ──► Instance 1
+    
+    Next packet from client ──► Instance 1 (same instance)
+    
+    All packets ──► Instance 1 (cookie ensures consistency)
+    
+    Result: Stable WebSocket connection
+    ```
+    
+    <Check>
+    Session affinity uses a cookie to route all requests from a client to the same backend instance.
+    </Check>
+  </Tab>
+</Tabs>
+
+### Load Distribution
+
+<Card title="How Requests Are Distributed" icon="scale-balanced">
+  1. **New connections**: Round-robin across available instances
+  2. **Existing WebSocket**: Sticky to original instance via cookie
+  3. **REST API calls**: Can hit any instance (stateless)
+  4. **Health checks**: Distributed for accurate health status
+</Card>
+
+## Database Connection Pooling
+
+With multiple backend instances, database connection management is critical:
+
+### Prisma Connection Pooling
+
+Prisma automatically manages connection pools:
+
+```javascript
+// database.js:1
+const prisma = new PrismaClient();
+```
+
+**Default Pool Size**: Calculated as `num_physical_cpus * 2 + 1`
+
+### Connection Pool Best Practices
+
+<AccordionGroup>
+  <Accordion title="Calculate Total Connections" icon="calculator">
+    **Formula**: `Total Connections = Replicas × Pool Size`
+    
+    Example:
+    - 5 backend replicas
+    - Pool size: 5 connections per instance
+    - Total: 5 × 5 = 25 connections to PostgreSQL
+    
+    <Note>
+    PostgreSQL default max connections: 100
+    
+    Ensure: `max_connections > (replicas × pool_size) + overhead`
+    </Note>
+  </Accordion>
+
+  <Accordion title="Configure Pool Size" icon="sliders">
+    Set connection limits in Prisma connection string:
+    
+    ```env
+    DATABASE_URL="postgresql://user:pass@host:5432/db?connection_limit=5"
+    ```
+    
+    Or use `pgBouncer` for connection pooling:
+    
+    ```yaml
+    # PgBouncer configuration
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: pgbouncer-config
+    data:
+      pgbouncer.ini: |
+        [databases]
+        opschat = host=postgres port=5432
+        
+        [pgbouncer]
+        pool_mode = transaction
+        max_client_conn = 100
+        default_pool_size = 25
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor Connection Usage" icon="chart-line">
+    Query PostgreSQL for active connections:
+    
+    ```sql
+    SELECT count(*) FROM pg_stat_activity;
+    ```
+    
+    Check by application:
+    
+    ```sql
+    SELECT application_name, count(*) 
+    FROM pg_stat_activity 
+    GROUP BY application_name;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Deployment Considerations
+
+### Resource Allocation
+
+<CardGroup cols={2}>
+  <Card title="Backend Pods" icon="server">
+    **CPU**: 0.5-1 core per pod
+    
+    **Memory**: 512MB-1GB per pod
+    
+    **Replicas**: Start with 2-3, scale based on load
+  </Card>
+  
+  <Card title="PostgreSQL" icon="database">
+    **CPU**: 2-4 cores
+    
+    **Memory**: 4-8GB
+    
+    **Storage**: SSD with sufficient IOPS
+  </Card>
+  
+  <Card title="Redis" icon="bolt">
+    **CPU**: 0.5-1 core
+    
+    **Memory**: 1-2GB
+    
+    **Persistence**: Optional (RDB snapshots)
+  </Card>
+  
+  <Card title="MinIO" icon="bucket">
+    **CPU**: 1-2 cores
+    
+    **Memory**: 2-4GB
+    
+    **Storage**: Large volume for file storage
+  </Card>
+</CardGroup>
+
+### Health Checks
+
+```yaml
+# Backend deployment health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+<Card title="Health Check Implementation" icon="heartbeat">
+  **Endpoint**: `/health` (healthRoutes.js)
+  
+  **Checks**:
+  - Server responding
+  - Database connection
+  - Redis connection
+  
+  **Response**: 200 OK or 500 Error
+</Card>
+
+### Monitoring and Observability
+
+<Steps>
+  <Step title="Application Metrics">
+    - Request rate (requests/sec)
+    - Response time (p50, p95, p99)
+    - Error rate (5xx responses)
+    - Active WebSocket connections
+  </Step>
+  
+  <Step title="Infrastructure Metrics">
+    - CPU usage per pod
+    - Memory usage per pod
+    - Network I/O
+    - Pod restart count
+  </Step>
+  
+  <Step title="Database Metrics">
+    - Query latency
+    - Connection pool usage
+    - Slow query log
+    - Database size
+  </Step>
+  
+  <Step title="Redis Metrics">
+    - Memory usage
+    - Commands/sec
+    - Pub/sub channels
+    - Eviction rate
+  </Step>
+</Steps>
+
+### Graceful Shutdown
+
+The backend implements graceful shutdown for zero-downtime deployments:
+
+**Implementation**: `/home/daytona/workspace/source/opschat-backend/src/server.js:105`
+
+```javascript
+const shutdown = async (signal) => {
+    console.log(`Received ${signal}. Shutting down gracefully...`);
+    
+    // 1. Stop accepting new connections
+    server.close(async () => {
+        // 2. Close Redis connections
+        await pubClient.disconnect();
+        await subClient.disconnect();
+        
+        // 3. Close database connections
+        await prisma.$disconnect();
+        
+        process.exit(0);
+    });
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+```
+
+<Info>
+Kubernetes sends `SIGTERM` before killing a pod. The graceful shutdown handler ensures existing requests complete before the pod terminates.
+</Info>
+
+### Rolling Updates
+
+Deploy new versions without downtime:
+
+```yaml
+# Deployment strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1        # Max 1 extra pod during update
+    maxUnavailable: 0  # Always maintain minimum replicas
+```
+
+<Steps>
+  <Step title="New version deployed">
+    Kubernetes creates new pod with updated image
+  </Step>
+  
+  <Step title="New pod becomes ready">
+    Health checks pass, pod marked as Ready
+  </Step>
+  
+  <Step title="Old pod receives SIGTERM">
+    Graceful shutdown handler runs
+  </Step>
+  
+  <Step title="Old pod terminates">
+    After shutdown completes, pod is removed
+  </Step>
+  
+  <Step title="Repeat for remaining pods">
+    Process continues until all pods updated
+  </Step>
+</Steps>
+
+## Horizontal Pod Autoscaling (HPA)
+
+Automatically scale based on metrics:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+```
+
+<Card title="HPA Behavior" icon="gauge-high">
+  - **Scale up**: When CPU > 70% or Memory > 80%
+  - **Scale down**: When metrics drop below targets
+  - **Min replicas**: 2 (always maintain redundancy)
+  - **Max replicas**: 10 (cost/resource limit)
+  - **Cooldown**: 3-5 minutes between scaling events
+</Card>
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Database Query Optimization" icon="database">
+    - Use Prisma indexes for frequent queries
+    - Include relations in single query (avoid N+1)
+    - Limit message history fetches (50 messages)
+    - Add database indexes on foreign keys
+    
+    ```prisma
+    model Message {
+      @@index([channelId, createdAt])
+      @@index([userId])
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Redis Optimization" icon="bolt">
+    - Use Redis persistence (RDB) for recovery
+    - Monitor memory usage (set maxmemory)
+    - Configure eviction policy: `allkeys-lru`
+    - Enable Redis clustering for > 1M messages/sec
+  </Accordion>
+
+  <Accordion title="WebSocket Optimization" icon="signal-stream">
+    - Compress Socket.io messages
+    - Use binary payloads for files
+    - Implement message batching
+    - Set appropriate ping/pong timeouts
+    
+    ```javascript
+    const io = new Server(server, {
+        adapter: createAdapter(pubClient, subClient),
+        transports: ['websocket'],
+        perMessageDeflate: true, // Compression
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="File Storage Optimization" icon="folder-open">
+    - Use pre-signed URLs (expire after 1 hour)
+    - Implement CDN in front of MinIO
+    - Compress images before upload
+    - Set lifecycle policies (auto-delete old files)
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting Scaling Issues
+
+<AccordionGroup>
+  <Accordion title="WebSocket messages not delivered across instances" icon="triangle-exclamation">
+    **Symptom**: Users on different backend instances can't see each other's messages
+    
+    **Cause**: Redis adapter not configured
+    
+    **Fix**:
+    1. Verify Redis is running: `kubectl get pods -l app=redis`
+    2. Check backend logs for Redis connection errors
+    3. Verify `REDIS_HOST` environment variable
+    4. Ensure Redis adapter is configured in `server.js:48`
+  </Accordion>
+
+  <Accordion title="Database connection pool exhausted" icon="triangle-exclamation">
+    **Symptom**: `Too many connections` or timeout errors
+    
+    **Cause**: Too many backend replicas × pool size > max_connections
+    
+    **Fix**:
+    1. Calculate total connections needed
+    2. Increase PostgreSQL `max_connections`:
+       ```sql
+       ALTER SYSTEM SET max_connections = 200;
+       ```
+    3. Or reduce pool size per instance
+    4. Consider using PgBouncer
+  </Accordion>
+
+  <Accordion title="Session affinity not working" icon="triangle-exclamation">
+    **Symptom**: WebSocket disconnects frequently
+    
+    **Cause**: Missing or incorrect ingress annotations
+    
+    **Fix**:
+    1. Verify ingress annotations in `ingress-backend.yaml:6`
+    2. Check cookie is set in browser:
+       ```javascript
+       document.cookie // Should contain 'route=...'
+       ```
+    3. Ensure ingress controller supports affinity
+    4. Check WebSocket upgrade headers
+  </Accordion>
+
+  <Accordion title="High memory usage on backend pods" icon="triangle-exclamation">
+    **Symptom**: Pods restarted due to OOMKilled
+    
+    **Cause**: Memory leak or insufficient resources
+    
+    **Fix**:
+    1. Check memory limits in deployment
+    2. Monitor heap usage over time
+    3. Review for unclosed database connections
+    4. Check Socket.io connection cleanup on disconnect
+    5. Increase memory limit if legitimate usage
+  </Accordion>
+</AccordionGroup>
+
+## Scaling Checklist
+
+<Steps>
+  <Step title="Verify stateless design">
+    <Check>No local state in backend code</Check>
+    <Check>JWT authentication (no sessions)</Check>
+    <Check>Shared database and storage</Check>
+  </Step>
+  
+  <Step title="Configure Redis adapter">
+    <Check>Redis running and accessible</Check>
+    <Check>Pub/sub clients configured</Check>
+    <Check>Redis adapter attached to Socket.io</Check>
+  </Step>
+  
+  <Step title="Setup load balancing">
+    <Check>Ingress controller installed</Check>
+    <Check>Session affinity configured</Check>
+    <Check>WebSocket timeouts set</Check>
+  </Step>
+  
+  <Step title="Configure database">
+    <Check>Connection pool sized correctly</Check>
+    <Check>Max connections sufficient</Check>
+    <Check>Health checks passing</Check>
+  </Step>
+  
+  <Step title="Deploy multiple replicas">
+    <Check>Start with 2-3 replicas</Check>
+    <Check>Monitor resource usage</Check>
+    <Check>Test cross-instance messaging</Check>
+  </Step>
+  
+  <Step title="Enable monitoring">
+    <Check>Application metrics</Check>
+    <Check>Infrastructure metrics</Check>
+    <Check>Alerting configured</Check>
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+    Review the complete system architecture
+  </Card>
+  
+  <Card title="Technology Stack" icon="layer-group" href="/architecture/tech-stack">
+    Understand the technologies powering OpsChat
+  </Card>
+</CardGroup>
